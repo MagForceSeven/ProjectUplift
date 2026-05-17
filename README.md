@@ -43,6 +43,35 @@ However it should be noted that none of these plugins are included in this repos
 The plugin code isn't directly relevant to the example code of the project, and is easily accessible if needed.
 If you wish to build this project, you will need to source those plugins.
 
+### Starfire Usage
+
+Quick Highlights of how each Starfire Plugin is being used:
+* Starfire Game
+	* Actor Collections used with the Campaign Mode Scope Collection and children to group actors (primarily persistent ones) that should be deleted prior to the creation of the travel save
+	* Game Facts - Not yet in use
+	* Game Feature Subsystems used with Strategy and Tactical world subsystems
+	* Level Metadata used with Tactical Map Definition to provide metadata for tactical maps while unloaded
+	* Player Modes used in tactical to setup idle Tactical controls. Future modes in tactical to support desired gameplay
+	* Starfire Game Core used as the basis for Engine class implementations like Game Instance, Game Mode, Player Controller, etc
+* Starfire UI
+	* UI Layout configuration
+	* Screen & Dialog patterns for gameplay access
+* Starfire Persistence
+	* Data Store Actors for actors that define the game model data. eg DS_Campaign & DS_BattleData for overall campaign and individual tactical instances, generally classes in the DataStoreActors source subdirectory
+	* Persistent Actor Archiver used in Campaign Save Game for serializing actor data
+* Starfire Save Data
+	* Used for Campaign Save Game to support user and level transition saves
+* Starfire Messenger
+	* Not yet in use
+* Starfire Assets
+	* Data Definition Library used as custom Asset Manager
+	* Data Definition used as the base for all game definition assets, eg Campaign Difficulty Definition
+	* Data Definition Extension used for feature extensions of assets in other content directories, eg Campaign Difficulty Extension adding Campaign data to Difficulties in /Game
+* Starfire Utilities
+	* Splat Task Manager used for Campaign Game Mode initialization over multiple frames without needing to tick the Game Mode Directly
+	* Specialized Native Tag macro for gameplay tag declarations scoped to classes
+	* Custom Blueprint Async Action class and Exec helper used by save games for blueprint and developer utilities
+
 ## Organization
 
 ### Game Features
