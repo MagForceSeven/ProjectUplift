@@ -6,13 +6,14 @@
 #include "SaveGames/UpliftCampaignSaveGame.h"
 #include "SaveGames/UpliftCampaignSaveSubsystem.h"
 
+#include "SaveData/SaveBlockerBase.h"
+
 #include "GameFeatures/FeatureContentManager.h"
 
 // Engine
 #include "Kismet/GameplayStatics.h"
 
 // Core
-#include "GameWorld/CampaignGameMode.h"
 #include "UObject/GarbageCollection.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(UpliftCampaignSaveUtilities)
@@ -86,15 +87,27 @@ bool UUpliftCampaignSaveUtilities::DoesSaveGameExist( const FString &SlotName, i
 
 bool UUpliftCampaignSaveUtilities::IsManualSavingAllowed( const UObject *WorldContext )
 {
-	const auto World = GEngine->GetWorldFromContextObject( WorldContext, EGetWorldErrorMode::LogAndReturnNull );
-	if (World == nullptr)
-		return false;
+	return !Super::IsSaveTypeBlocked( WorldContext, UUpliftCampaignSave::StaticClass( ) );
+}
 
-	const auto CampaignGameMode = Cast< ACampaignGameMode >( UGameplayStatics::GetGameMode( WorldContext ) );
-	if (CampaignGameMode == nullptr)
-		return false;
+bool UUpliftCampaignSaveUtilities::IsManualSavingAllowed( const UObject *WorldContext, TArray< FString > &OutBlockedReasons )
+{
+	return !Super::IsSaveTypeBlocked( WorldContext, UUpliftCampaignSave::StaticClass( ), &OutBlockedReasons );
+}
 
-	return CampaignGameMode->IsManualSavingAllowed( );
+FSaveBlockerHandle UUpliftCampaignSaveUtilities::AddSaveGameBlocker( const UObject *WorldContext, const TConstStructView< FSaveBlockerBase > &NewBlocker )
+{
+	return Super::AddSaveBlocker( WorldContext, UUpliftCampaignSave::StaticClass( ), NewBlocker );
+}
+
+FSaveBlockerHandle UUpliftCampaignSaveUtilities::AddSaveGameBlocker( const UObject *WorldContext, const TInstancedStruct< FSaveBlockerBase > &NewBlocker )
+{
+	if (!ensureAlways( NewBlocker.IsValid( ) ))
+		return { };
+	if (!ensureAlways( NewBlocker.GetScriptStruct( )->IsChildOf< FSaveBlockerBase >( ) ))
+		return { };
+	
+	return Super::AddSaveBlocker( WorldContext, UUpliftCampaignSave::StaticClass( ), NewBlocker );
 }
 
 bool UUpliftCampaignSaveUtilities::SaveToSlot( const UObject *WorldContext, FString SlotName, int32 UserIndex, ESaveGameType SaveType, FString DisplayNameOverride )
@@ -103,6 +116,17 @@ bool UUpliftCampaignSaveUtilities::SaveToSlot( const UObject *WorldContext, FStr
 
 	if (!CVar_AllowDeveloperSaves.GetValueOnAnyThread( ) && (SaveType == ESaveGameType::Developer))
 		return false; // Ignore saving a developer save
+
+	TArray< FString > BlockedReasons;
+	if (IsSaveTypeBlocked( WorldContext, UUpliftCampaignSave::StaticClass( ), &BlockedReasons ))
+	{
+		UE_LOG( LogStarfireSaveData, Log, TEXT( "Request to save blocked:" ) );
+
+		for (const auto &Reason : BlockedReasons)
+			UE_LOG( LogStarfireSaveData, Log, TEXT( "\t\t%s" ), *Reason );
+
+		return false;
+	}
 	
 	const auto SaveData = CreateAndFillSaveData( WorldContext, true, false );
 	if (!ensureAlways( SaveData != nullptr ))
@@ -126,6 +150,18 @@ void UUpliftCampaignSaveUtilities::SaveToSlot_Async( const UObject *WorldContext
 	{
 		OnCompletion.ExecuteIfBound( SlotName, UserIndex, false );
 		return; // Ignore saving a developer save
+	}
+
+	TArray< FString > BlockedReasons;
+	if (IsSaveTypeBlocked( WorldContext, UUpliftCampaignSave::StaticClass( ), &BlockedReasons ))
+	{
+		UE_LOG( LogStarfireSaveData, Log, TEXT( "Request to save blocked:" ) );
+
+		for (const auto &Reason : BlockedReasons)
+			UE_LOG( LogStarfireSaveData, Log, TEXT( "\t\t%s" ), *Reason );
+
+		OnCompletion.ExecuteIfBound( SlotName, UserIndex, false );
+		return;
 	}
 
 	const auto SaveData = CreateSaveData( WorldContext );
@@ -650,12 +686,35 @@ const UUpliftCampaignSave* UUpliftCampaignSaveUtilities::CreateTravelSave( const
 
 const UUpliftCampaignSave* UUpliftCampaignSaveUtilities::CreateCheckpointSave( const UObject *WorldContext )
 {
+	TArray< FString > BlockedReasons;
+	if (IsSaveTypeBlocked( WorldContext, UUpliftCampaignSave::StaticClass( ), &BlockedReasons ))
+	{
+		UE_LOG( LogStarfireSaveData, Log, TEXT( "Request to save blocked:" ) );
+
+		for (const auto &Reason : BlockedReasons)
+			UE_LOG( LogStarfireSaveData, Log, TEXT( "\t\t%s" ), *Reason );
+
+		return nullptr;
+	}
+	
 	return CreateAndFillSaveData( WorldContext, false, false );
 }
 
 void UUpliftCampaignSaveUtilities::CreateCheckpointSave_Async( const UObject *WorldContext, const FCreateCheckpointComplete &OnCompletion )
 {
 	check( OnCompletion.IsBound( ) );
+
+	TArray< FString > BlockedReasons;
+	if (IsSaveTypeBlocked( WorldContext, UUpliftCampaignSave::StaticClass( ), &BlockedReasons ))
+	{
+		UE_LOG( LogStarfireSaveData, Log, TEXT( "Request to save blocked:" ) );
+
+		for (const auto &Reason : BlockedReasons)
+			UE_LOG( LogStarfireSaveData, Log, TEXT( "\t\t%s" ), *Reason );
+
+		OnCompletion.Execute( WorldContext, nullptr, false );
+		return;
+	}
 
 	const auto CheckpointData = CreateSaveData( WorldContext, false );
 
@@ -878,6 +937,17 @@ bool UUpliftCampaignSaveUtilities::SaveToPath( const UObject *WorldContext, cons
 	if (!CVar_AllowDeveloperSaves.GetValueOnAnyThread( ) && (SaveType == ESaveGameType::Developer))
 		return false; // Ignore saving a developer save
 
+	TArray< FString > BlockedReasons;
+	if (IsSaveTypeBlocked( WorldContext, UUpliftCampaignSave::StaticClass( ), &BlockedReasons ))
+	{
+		UE_LOG( LogStarfireSaveData, Log, TEXT( "Request to save blocked:" ) );
+
+		for (const auto &Reason : BlockedReasons)
+			UE_LOG( LogStarfireSaveData, Log, TEXT( "\t\t%s" ), *Reason );
+
+		return false;
+	}
+
 	const auto SaveData = CreateAndFillSaveData( WorldContext, true, false );
 	if (!ensureAlways( SaveData != nullptr ))
 		return false;
@@ -905,6 +975,18 @@ void UUpliftCampaignSaveUtilities::SaveToPath_Async( const UObject *WorldContext
 	{
 		OnCompletion.ExecuteIfBound( PathName, -1, false );
 		return; // Ignore saving a developer save
+	}
+
+	TArray< FString > BlockedReasons;
+	if (IsSaveTypeBlocked( WorldContext, UUpliftCampaignSave::StaticClass( ), &BlockedReasons ))
+	{
+		UE_LOG( LogStarfireSaveData, Log, TEXT( "Request to save blocked:" ) );
+
+		for (const auto &Reason : BlockedReasons)
+			UE_LOG( LogStarfireSaveData, Log, TEXT( "\t\t%s" ), *Reason );
+
+		OnCompletion.ExecuteIfBound( PathName, -1, false );
+		return;
 	}
 
 	const auto SaveData = CreateSaveData( WorldContext );
@@ -1175,6 +1257,17 @@ bool UUpliftCampaignSaveUtilities::DeveloperSave( const UObject *WorldContext, c
 	if (!ensureAlways( !SlotName.IsEmpty( ) ))
 		return false;
 
+	TArray< FString > BlockedReasons;
+	if (IsSaveTypeBlocked( WorldContext, UUpliftCampaignSave::StaticClass( ), &BlockedReasons ))
+	{
+		UE_LOG( LogStarfireSaveData, Log, TEXT( "Request to save blocked:" ) );
+
+		for (const auto &Reason : BlockedReasons)
+			UE_LOG( LogStarfireSaveData, Log, TEXT( "\t\t%s" ), *Reason );
+
+		return false;
+	}
+
 	if (DisplayNameOverride.IsEmpty( ))
 		DisplayNameOverride = SlotName.Replace( TEXT( "_" ), TEXT( " " ) );
 	
@@ -1185,6 +1278,18 @@ void UUpliftCampaignSaveUtilities::DeveloperSave_Async( const UObject *WorldCont
 {
 	if (!ensureAlways( !SlotName.IsEmpty( ) ))
 	{
+		OnCompletion.ExecuteIfBound( SlotName, UserIndex, false );
+		return;
+	}
+
+	TArray< FString > BlockedReasons;
+	if (IsSaveTypeBlocked( WorldContext, UUpliftCampaignSave::StaticClass( ), &BlockedReasons ))
+	{
+		UE_LOG( LogStarfireSaveData, Log, TEXT( "Request to save blocked:" ) );
+
+		for (const auto &Reason : BlockedReasons)
+			UE_LOG( LogStarfireSaveData, Log, TEXT( "\t\t%s" ), *Reason );
+
 		OnCompletion.ExecuteIfBound( SlotName, UserIndex, false );
 		return;
 	}

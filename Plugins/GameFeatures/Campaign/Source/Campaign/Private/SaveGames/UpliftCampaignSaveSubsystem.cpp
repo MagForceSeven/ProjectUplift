@@ -2,31 +2,19 @@
 
 #include "SaveGames/UpliftCampaignSaveSubsystem.h"
 
-#include "SaveData/SaveDataUtilities.h"
 #include "SaveGames/UpliftCampaignSaveGame.h"
+#include "SaveGames/UpliftCampaignSaveUtilities.h"
+
+#include "GameWorld/UpliftWorldSettings.h"
+#include "Strategy/StrategyGameMode.h"
+#include "Tactical/TacticalGameMode.h"
+
+#include "SaveData/SaveBlockerBase.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(UpliftCampaignSaveSubsystem)
 
-UUpliftCampaignSaveSubsystem* UUpliftCampaignSaveSubsystem::Get( const UObject *WorldContext )
-{
-	if (!ensureAlways( WorldContext != nullptr ))
-		return nullptr;
-	
-	const UWorld *World = GEngine->GetWorldFromContextObject( WorldContext, EGetWorldErrorMode::LogAndReturnNull );
-	if (!ensureAlways( World != nullptr ))
-		return nullptr;
-
-	return Get( World->GetGameInstance( ) );
-}
-
-UUpliftCampaignSaveSubsystem* UUpliftCampaignSaveSubsystem::Get( const UGameInstance *GameInstance )
-{
-	return GameInstance->GetSubsystem< UUpliftCampaignSaveSubsystem >( );
-}
-
 EExecGameLoading UUpliftCampaignSaveSubsystem::GetSaveGameLoadingType( const UObject *WorldContext )
 {
-	const auto Subsystem = Get( WorldContext );
 	const auto Subsystem = GetSubsystem( WorldContext );
 	if (!ensureAlways( Subsystem != nullptr ))
 		return EExecGameLoading::NoData;
@@ -52,12 +40,18 @@ void UUpliftCampaignSaveSubsystem::Initialize( FSubsystemCollectionBase &Collect
 
 	USaveDataUtilities::OnSaveDataAccessStarted.AddUObject( this, &UUpliftCampaignSaveSubsystem::SaveGameAccessStarted );
 	USaveDataUtilities::OnSaveDataAccessEnded.AddUObject( this, &UUpliftCampaignSaveSubsystem::SaveGameAccessEnded );
+
+	FWorldDelegates::OnGameInstanceWorldChanged.AddUObject( this, &UUpliftCampaignSaveSubsystem::HandleNewWorld );
+
+	HandleNewWorld( nullptr, nullptr, GetWorld( ) );
 }
 
 void UUpliftCampaignSaveSubsystem::Deinitialize( )
 {
 	USaveDataUtilities::OnSaveDataAccessStarted.RemoveAll( this );
 	USaveDataUtilities::OnSaveDataAccessEnded.RemoveAll( this );
+
+	FWorldDelegates::OnStartGameInstance.RemoveAll( this );
 
 	Super::Deinitialize( );
 }
@@ -75,6 +69,31 @@ void UUpliftCampaignSaveSubsystem::SaveGameAccessEnded( )
 void UUpliftCampaignSaveSubsystem::SwitchOnGameLoadingType( const UObject *WorldContext, EExecGameLoading &Exec )
 {
 	Exec = GetSaveGameLoadingType( WorldContext );
+}
+
+void UUpliftCampaignSaveSubsystem::HandleNewWorld( UGameInstance *GameInstance, UWorld *OldWorld, UWorld *NewWorld )
+{
+	if (NewWorld == nullptr)
+		return;
+
+	FGameplayTagContainer GameTypes;
+	GameTypes.AddTag( ATacticalGameMode::WorldType_Tactical );
+	GameTypes.AddTag( AStrategyGameMode::WorldType_Strategy );
+
+	const auto Settings = Cast< AUpliftWorldSettings >( NewWorld->GetWorldSettings( ) );
+	if (Settings->GetWorldType( ).MatchesAny( GameTypes ))
+		return;
+
+	NewWorld->GetOnBeginPlayEvent( ).AddUObject( this, &UUpliftCampaignSaveSubsystem::HandleWorldBeginPlay );
+}
+
+void UUpliftCampaignSaveSubsystem::HandleWorldBeginPlay( bool bBeginPlay )
+{
+	ensureAlways( bBeginPlay );
+	GetWorld( )->GetOnBeginPlayEvent( ).RemoveAll( this );
+
+	// Prevent campaign saves in maps that are not campaign gameplay
+	UUpliftCampaignSaveUtilities::AddSaveGameBlocker( this, FSaveBlocker_Unconditional( "Not Campaign Gameplay" ) );
 }
 
 #define LOCTEXT_NAMESPACE "UpliftCampaign_DeveloperSettings"

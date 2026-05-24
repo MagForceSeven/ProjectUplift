@@ -71,6 +71,14 @@ protected:
 	// Branch the execution on the type of data that is available
 	UFUNCTION( BlueprintCallable, meta = (WorldContext = "WorldContext", ExpandEnumAsExecs = "Exec") )
 	static void SwitchOnGameLoadingType( const UObject* WorldContext, EExecGameLoading& Exec );
+
+	// Handle the transition from one world to the next
+	UFUNCTION( )
+	void HandleNewWorld( UGameInstance *GameInstance, UWorld *OldWorld, UWorld *NewWorld );
+
+	// Handle the start of gameplay in worlds
+	UFUNCTION( )
+	void HandleWorldBeginPlay( bool bBeginPlay );
 };
 
 // Configuration settings for project specific save data settings
