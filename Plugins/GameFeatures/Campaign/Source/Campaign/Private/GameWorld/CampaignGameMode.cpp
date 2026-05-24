@@ -56,7 +56,7 @@ void ACampaignGameMode::HandleMatchIsWaitingToStart( )
 {
 	const auto CampaignInstance = UCampaignGameInstance::Get( this ); check( CampaignInstance != nullptr );
 	const auto FeaturesManager = UFeatureContentManager::GetSubsystem( this ); check( FeaturesManager != nullptr );
-	const auto SaveGames = UUpliftCampaignSaveSubsystem::Get( this ); check( SaveGames != nullptr );
+	const auto SaveGames = UUpliftCampaignSaveSubsystem::GetSubsystem( this ); check( SaveGames != nullptr );
 
 	auto InitializationSplat = [ this, CampaignInstance, FeaturesManager, SaveGames ]( ) -> ESplatTaskResult
 	{
@@ -173,7 +173,7 @@ void ACampaignGameMode::EndPlay( const EEndPlayReason::Type EndPlayReason )
 	FEditorDelegates::PrePIEEnded.RemoveAll( this );
 #endif
 
-	const auto SaveGames = UUpliftCampaignSaveSubsystem::Get( this );
+	const auto SaveGames = UUpliftCampaignSaveSubsystem::GetSubsystem( this );
 	SaveGames->bSaveWasLoaded = false;
 	SaveGames->bSaveWasLevelTransition = false;
 
@@ -205,7 +205,7 @@ void ACampaignGameMode::InitGameModelData( void )
 {
 	InitializeCommon( );
 	
-	const auto SaveGames = UUpliftCampaignSaveSubsystem::Get( this );
+	const auto SaveGames = UUpliftCampaignSaveSubsystem::GetSubsystem( this );
 	check( SaveGames != nullptr );
 
 	if (SaveGames->SaveGame != SaveGames->TacticalStartCheckpoint)

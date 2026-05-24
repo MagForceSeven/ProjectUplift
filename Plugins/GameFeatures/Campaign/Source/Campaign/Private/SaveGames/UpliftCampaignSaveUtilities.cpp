@@ -312,7 +312,7 @@ void UUpliftCampaignSaveUtilities::SaveCheckpointToSlot_Async( const UObject *Wo
 
 static void PostSaveGameLoad( const UObject *WorldContext, const UUpliftCampaignSaveHeader *Header, const UUpliftCampaignSave *SaveData, const FString &SlotName )
 {
-	const auto SaveSubsystem = UUpliftCampaignSaveSubsystem::Get( WorldContext );
+	const auto SaveSubsystem = UUpliftCampaignSaveSubsystem::GetSubsystem( WorldContext );
 	check( SaveSubsystem != nullptr );
 
 	SaveSubsystem->LastSaveSlotName = SlotName;
@@ -322,7 +322,7 @@ static void PostSaveGameLoad( const UObject *WorldContext, const UUpliftCampaign
 
 void UUpliftCampaignSaveUtilities::LoadCheckpointSave( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData )
 {
-	const auto SaveSubsystem = UUpliftCampaignSaveSubsystem::Get( WorldContext );
+	const auto SaveSubsystem = UUpliftCampaignSaveSubsystem::GetSubsystem( WorldContext );
 	check( SaveSubsystem != nullptr );
 
 	SaveSubsystem->SaveGame = CheckpointData;

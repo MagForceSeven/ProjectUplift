@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Subsystems/GameInstanceSubsystem.h"
+#include "Templates/SubsystemNativeAccessors.h"
 
 #include "UpliftCampaignSaveSubsystem.generated.h"
 
@@ -22,6 +23,7 @@ enum class EExecGameLoading : uint8
 // A game instance subsystem for use by the save system for various application duration tracking needs
 UCLASS( )
 class UUpliftCampaignSaveSubsystem : public UGameInstanceSubsystem
+class CAMPAIGN_API UUpliftCampaignSaveSubsystem : public UGameInstanceSubsystem, public TSubsystemNativeAccessors< UUpliftCampaignSaveSubsystem >
 {
 	GENERATED_BODY( )
 public:
@@ -78,7 +80,7 @@ protected:
 
 // Configuration settings for project specific save data settings
 UCLASS( Config = "Game", DefaultConfig )
-class UUpliftCampaignSaveSettings : public UDeveloperSettings
+class CAMPAIGN_API UUpliftCampaignSaveSettings : public UDeveloperSettings
 {
 	GENERATED_BODY( )
 public:

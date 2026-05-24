@@ -27,6 +27,7 @@ UUpliftCampaignSaveSubsystem* UUpliftCampaignSaveSubsystem::Get( const UGameInst
 EExecGameLoading UUpliftCampaignSaveSubsystem::GetSaveGameLoadingType( const UObject *WorldContext )
 {
 	const auto Subsystem = Get( WorldContext );
+	const auto Subsystem = GetSubsystem( WorldContext );
 	if (!ensureAlways( Subsystem != nullptr ))
 		return EExecGameLoading::NoData;
 

@@ -85,7 +85,7 @@ void ATacticalGameMode::GameModeReady( )
 	{
 		if (ensureAlways( Success ))
 		{
-			const auto SaveSubsystem = UUpliftCampaignSaveSubsystem::Get( WorldContext );
+			const auto SaveSubsystem = UUpliftCampaignSaveSubsystem::GetSubsystem( WorldContext );
 			check( SaveSubsystem != nullptr );
 
 			SaveSubsystem->TacticalStartCheckpoint = CheckpointData;
@@ -100,7 +100,7 @@ void ATacticalGameMode::PreTransitionOutOfMode( )
 {
 	Super::PreTransitionOutOfMode( );
 
-	const auto SaveSubsystem = UUpliftCampaignSaveSubsystem::Get( this );
+	const auto SaveSubsystem = UUpliftCampaignSaveSubsystem::GetSubsystem( this );
 	check( SaveSubsystem != nullptr );
 
 	SaveSubsystem->TacticalStartCheckpoint = nullptr;

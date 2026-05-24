@@ -180,7 +180,7 @@ void UUpliftCampaignSaveUtilities::FillAsyncSaveGameData_Async( const UObject *W
 
 bool UUpliftCampaignSaveUtilities::FillCheckpointData( const UObject *WorldContext, UUpliftCampaignSave *SaveGame )
 {
-	const auto Subsystem = UUpliftCampaignSaveSubsystem::Get( WorldContext );
+	const auto Subsystem = UUpliftCampaignSaveSubsystem::GetSubsystem( WorldContext );
 	check( Subsystem != nullptr );
 
 	if (Subsystem->TacticalStartCheckpoint != nullptr)
@@ -302,7 +302,7 @@ bool UUpliftCampaignSave::ApplySaveData( const UObject *WorldContext ) const
 		const auto CheckpointData = NewObject< UUpliftCampaignSave >( GetTransientPackage( ) );
 		SerializeFromBytes( CheckpointData, TacticalCheckpointBytes );
 
-		const auto Subsystem = UUpliftCampaignSaveSubsystem::Get( WorldContext );
+		const auto Subsystem = UUpliftCampaignSaveSubsystem::GetSubsystem( WorldContext );
 		check( Subsystem != nullptr );
 
 		Subsystem->TacticalStartCheckpoint = CheckpointData;
