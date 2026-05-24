@@ -22,15 +22,10 @@ enum class EExecGameLoading : uint8
 
 // A game instance subsystem for use by the save system for various application duration tracking needs
 UCLASS( )
-class UUpliftCampaignSaveSubsystem : public UGameInstanceSubsystem
 class CAMPAIGN_API UUpliftCampaignSaveSubsystem : public UGameInstanceSubsystem, public TSubsystemNativeAccessors< UUpliftCampaignSaveSubsystem >
 {
 	GENERATED_BODY( )
 public:
-	// Subsystem Accessor Utilities
-	[[nodiscard]] static UUpliftCampaignSaveSubsystem* Get( const UObject *WorldContext );
-	[[nodiscard]] static UUpliftCampaignSaveSubsystem* Get( const UGameInstance *GameInstance );
-
 	// Blueprint accessible hook for async save notification
 	DECLARE_DYNAMIC_MULTICAST_DELEGATE( FSaveGameAccessStarted );
 	UPROPERTY( BlueprintAssignable )
