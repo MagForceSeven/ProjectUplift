@@ -251,7 +251,7 @@ static TAutoConsoleVariable< int > CVar_MinAllowedSaveVersion( TEXT( "Uplift.Sav
 static TAutoConsoleVariable< int > CVar_MaxAllowedSaveVersion( TEXT( "Uplift.SaveGames.SetMaxAllowedSaveVersion" ),
 	(int)EUpliftCampaignSaveVersion::Build_Latest, TEXT( "Change the maximum supported version for loading save games" ), ECVF_Cheat );
 
-bool UUpliftCampaignSave::IsCompatible( uint32 InVersion ) const
+bool UUpliftCampaignSave::IsCompatible( uint32 InVersion, uint32 InChangelist ) const
 {
 #if !SF_SAVES_ALLOW_DEV
 	// If this version isn't RTM, we can't load it
@@ -278,6 +278,10 @@ bool UUpliftCampaignSave::IsCompatible( uint32 InVersion ) const
 
 	// Above the maximum known to this build
 	if (Version > EUpliftCampaignSaveVersion::Latest)
+		return false;
+
+	// Is the changelist below the minimum build available
+	if (InChangelist < Minimum_Allowed_CL)
 		return false;
 
 	return true;

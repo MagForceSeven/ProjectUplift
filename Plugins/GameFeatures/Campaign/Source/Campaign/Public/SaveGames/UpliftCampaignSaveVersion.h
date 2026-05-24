@@ -46,6 +46,8 @@ enum class EUpliftCampaignSaveVersion : uint32
 #endif
 };
 
+constexpr uint32 Minimum_Allowed_CL = 3155;
+
 // Utility for stripping the RTM bit from a version so that versioning can be compared across build types
 constexpr EUpliftCampaignSaveVersion UpliftCampaignSave_StripRTM( EUpliftCampaignSaveVersion Version ) { return (EUpliftCampaignSaveVersion)((int)Version & ~(int)EUpliftCampaignSaveVersion::RTM); }
 
