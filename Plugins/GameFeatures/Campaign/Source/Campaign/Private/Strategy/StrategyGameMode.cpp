@@ -16,8 +16,6 @@
 #include "PersistentDataStore.h"
 #include "DataStoreActors/BattleData.h"
 
-#include "GameFeatures/FeatureContentManager.h"
-
 // Engine
 #include "Kismet/GameplayStatics.h"
 
@@ -37,10 +35,6 @@ AStrategyGameMode::AStrategyGameMode( )
 
 void AStrategyGameMode::LaunchNewGame( const UObject *WorldContext )
 {
-	const auto FeaturesManager = UFeatureContentManager::GetSubsystem( WorldContext );
-	const auto OwnedFeatures = FeaturesManager->GetOwnedFeatures( );
-	FeaturesManager->SetEnabledFeatures( TSet( OwnedFeatures ), { CampaignBundles::Campaign } );
-	
 	const auto Settings = GetDefault< UCampaignSettings >( );
 	const auto StrategyPath = Settings->StrategyLevel.GetLongPackageFName( );
 	
