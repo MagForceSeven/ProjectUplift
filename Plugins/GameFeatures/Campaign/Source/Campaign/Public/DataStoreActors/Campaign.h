@@ -17,6 +17,10 @@ class CAMPAIGN_API ADS_Campaign : public ADataStoreSingleton, public TActorSingl
 {
 	GENERATED_BODY( )
 public:
+	// Get the unique identifier for the overall campaign
+	UFUNCTION( BlueprintCallable, meta = (WorldContext = "WorldContext") )
+	[[nodiscard]] static FGuid GetCampaignID( const UObject* WorldContext );
+	
 	// Get the configuration for the campaigns difficulty settings
 	[[nodiscard]] const UCampaignDifficultyExtension* GetDifficulty( void ) const { return Difficulty; }
 

@@ -38,6 +38,10 @@ public:
 	UPROPERTY( VisibleAnywhere, BlueprintReadOnly, Category = "Save Data" )
 	FText Descriptor2;
 
+	// An ID that can correlate saves to a specific playthrough
+	UPROPERTY( VisibleInstanceOnly )
+	FGuid CampaignID;
+
 	// Binary data for persistent actors
 	UPROPERTY( VisibleInstanceOnly )
 	TArray< uint8 > PersistentActorData;

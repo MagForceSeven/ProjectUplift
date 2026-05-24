@@ -6,6 +6,8 @@
 #include "SaveGames/UpliftCampaignSaveUtilities.h"
 #include "SaveGames/UpliftCampaignSaveSubsystem.h"
 
+#include "DataStoreActors/Campaign.h"
+
 #include "DataStoreActor.h"
 #include "PersistenceComponent.h"
 #include "PersistentActorArchiver.h"
@@ -44,6 +46,7 @@ UUpliftCampaignSave* UUpliftCampaignSaveUtilities::CreateSaveData( const UObject
 
 	SaveGame->WorldToLoad = Path;
 	SaveGame->bTravelSave = bIsTravelSave;
+	SaveGame->CampaignID = ADS_Campaign::GetCampaignID( WorldContext );
 
 	FMemoryWriter MemoryWriter( SaveGame->PersistentActorData );
 	FPersistentActorWriter Archiver( MemoryWriter );

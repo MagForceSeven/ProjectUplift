@@ -25,6 +25,10 @@ public:
 	UPROPERTY( VisibleAnywhere, BlueprintReadOnly, Category = "Save Game" )
 	FText Descriptor2;
 
+	// An ID that can correlate saves to a specific playthrough
+	UPROPERTY( VisibleInstanceOnly )
+	FGuid CampaignID;
+
 	// Core Save Header API
 	uint32 GetVersion( void ) const override;
 	bool IsCompatible( uint32 HeaderVersion ) const override;

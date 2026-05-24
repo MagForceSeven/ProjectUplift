@@ -26,6 +26,7 @@ UUpliftCampaignSaveHeader* UUpliftCampaignSaveUtilities::CreateSaveGameHeader( c
 	Header->SaveType = SaveType;
 	Header->Descriptor1 = SaveGameData->Descriptor1;
 	Header->Descriptor2 = SaveGameData->Descriptor2;
+	Header->CampaignID = SaveGameData->CampaignID;
 
 	return Header;
 }
