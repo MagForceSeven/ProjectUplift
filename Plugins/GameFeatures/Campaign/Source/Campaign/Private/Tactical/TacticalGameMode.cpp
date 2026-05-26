@@ -32,12 +32,6 @@ ATacticalGameMode::ATacticalGameMode( )
 	GameModeBundles.Push( CampaignBundles::Tactical );
 }
 
-bool ATacticalGameMode::IsManualSavingAllowed( ) const
-{
-	// TODO: Some gameplay checks for manual saving
-	return true;
-}
-
 void ATacticalGameMode::InitializeCommon( )
 {
 	Super::InitializeCommon( );

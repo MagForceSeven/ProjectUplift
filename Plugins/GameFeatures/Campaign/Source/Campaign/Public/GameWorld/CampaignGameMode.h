@@ -43,9 +43,6 @@ public:
 	// Utility function for doing all the tasks needed for transitioning from one gameplay level to another
 	static void TransitionToNewGameplayLevel( const UObject *WorldContext, const TSoftObjectPtr< const UWorld > &NewLevel );
 
-	// Hook for campaign gameplay to control when manual saving is and isn't allowed
-	virtual bool IsManualSavingAllowed( void ) const { return true; }
-
 #if !UE_BUILD_SHIPPING
 	// Functions for use by cheats or other developer tools which want to bring in the bundle assets for the current mode
 	// The bundles loads will immediately block to wait for the bundle assets (if any) to become loaded

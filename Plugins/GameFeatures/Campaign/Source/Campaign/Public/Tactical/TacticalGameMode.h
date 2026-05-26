@@ -18,9 +18,6 @@ public:
 
 	ATacticalGameMode( );
 
-	// Campaign Game Mode API
-	bool IsManualSavingAllowed( void ) const override;
-
 protected:
 	// Campaign Game Mode API
 	void InitializeCommon( void ) override;
