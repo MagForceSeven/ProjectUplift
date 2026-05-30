@@ -14,12 +14,15 @@
 #include "SaveGames/UpliftCampaignSaveSubsystem.h"
 #include "SaveGames/UpliftCampaignSaveUtilities.h"
 
-#include "DataStoreActors/BattleData.h"
 #include "PersistentDataStore.h"
+#include "DataStoreActors/Campaign.h"
+#include "DataStoreActors/BattleData.h"
 
 #include "GameFeatures/FeatureContentManager.h"
 #include "GameFeatures/StarfireFeatureData.h"
 #include "GameFeatures/Actions/GameFeatureAction_UpliftCampaign.h"
+
+#include "Settings/CampaignPIESettings.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(TacticalGameMode)
 
@@ -54,11 +57,27 @@ void ATacticalGameMode::InitializeForQuickPlay( )
 	check( CampaignInstance != nullptr );
 
 	const auto BattleData = DataStore->SpawnSingleton< ADS_BattleData >( );
+	const auto CampaignState = ADS_Campaign::GetSingleton( this );
 
 	if (CampaignInstance->SimulationSettings != nullptr)
 		BattleData->TacticalMode = ETacticalMode::Simulator;
 	else
 		BattleData->TacticalMode = ETacticalMode::PIE;
+
+	const auto PIESettings = GetDefault< UCampaignPIESettings >( );
+
+	for (const auto HeroSpec : PIESettings->AdditionalRoster)
+	{
+		if (!HeroSpec.IsValid( ))
+			continue;
+
+		const auto Hero = ADS_Hero::SpawnHero( this, HeroSpec );
+		CampaignState->ActiveHeroes.Push( Hero );
+		BattleData->Squad.Push( Hero );
+
+		if (BattleData->Squad.Num( ) >= CampaignState->SquadSize)
+			break;
+	}
 
 	TransitionIntoMode( );
 }
@@ -67,11 +86,13 @@ void ATacticalGameMode::TransitionIntoMode( )
 {
 	Super::TransitionIntoMode( );
 
-	const auto DataStore = UPersistentDataStore::GetSubsystem( this );
-	check( DataStore != nullptr );
-
-	const auto BattleData = DataStore->GetSingleton< ADS_BattleData >( );
+	const auto BattleData = ADS_BattleData::GetSingleton( this );
 	check( BattleData != nullptr );
+	check( !BattleData->Squad.IsEmpty( ) );
+
+	const auto CampaignState = ADS_Campaign::GetSingleton( this );
+
+	ensureAlways( BattleData->Squad.Num( ) == CampaignState->SquadSize );
 
 	// ---------------------------------------------------------------------------------------------------------------
 	//   Allow the active features to add to the configuration of the new tactical session

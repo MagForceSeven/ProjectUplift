@@ -4,6 +4,8 @@
 
 #include "Engine/DeveloperSettings.h"
 
+#include "DataStoreActors/Hero.h"
+
 #include "CampaignPIESettings.generated.h"
 
 class UCampaignDifficultyDefinition;
@@ -18,6 +20,14 @@ public:
 	UPROPERTY( EditDefaultsOnly, BlueprintReadOnly, Config, Category = "General", meta = (DisplayThumbnail = false) )
 	TSoftObjectPtr< const UCampaignDifficultyDefinition > Difficulty;
 
+	// The heroes that should make up the player squad when launching tactical PIE
+	UPROPERTY( EditDefaultsOnly, BlueprintReadOnly, Config, Category = "Tactical" )
+	TArray< FHeroSpec > PlayerSquad;
+
+	// Additional heroes to add to the player roster when launching PIE
+	UPROPERTY( EditDefaultsOnly, BlueprintReadOnly, Config, Category = "Strategy" )
+	TArray< FHeroSpec > AdditionalRoster;
+	
 	// Developer Settings API
 	FName GetContainerName( ) const override;
 	FName GetCategoryName( ) const override;

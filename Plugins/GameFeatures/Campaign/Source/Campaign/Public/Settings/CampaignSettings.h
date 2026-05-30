@@ -4,6 +4,8 @@
 
 #include "Engine/DeveloperSettings.h"
 
+#include "DataStoreActors/Hero.h"
+
 #include "CampaignSettings.generated.h"
 
 // General settings for the normal campaign gameplay
@@ -19,6 +21,10 @@ public:
 	// The level used for the strategy layer
 	UPROPERTY( EditDefaultsOnly, BlueprintReadOnly, Config )
 	TSoftObjectPtr< const UWorld > StrategyLevel;
+
+	// How the roster should be configured for a new game
+	UPROPERTY( EditDefaultsOnly, BlueprintReadOnly, Config )
+	TArray< FHeroSpec > InitialRoster;
 
 	// Developer Settings API
 	FName GetContainerName( ) const override;

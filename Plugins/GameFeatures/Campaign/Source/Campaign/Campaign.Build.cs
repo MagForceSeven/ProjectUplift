@@ -40,6 +40,7 @@ public class Campaign : ModuleRules
 				"CommonUI",
 
 				"ActorCollections",
+				"GameFacts",
 				"GameFeatureSubsystems",
 				"LevelMetadata",
 				"PlayerModes",

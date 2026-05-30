@@ -48,7 +48,7 @@ If you wish to build this project, you will need to source those plugins.
 Quick Highlights of how each Starfire Plugin is being used:
 * Starfire Game
 	* Actor Collections used with the Campaign Mode Scope Collection and children to group actors (primarily persistent ones) that should be deleted prior to the creation of the travel save
-	* Game Facts - Not yet in use
+	* Game Facts - Implemented by Hero Data Store Actors (currently only contributing the ID tag for the character's Hero Class)
 	* Game Feature Subsystems used with Strategy and Tactical world subsystems
 	* Level Metadata used with Tactical Map Definition to provide metadata for tactical maps while unloaded
 	* Player Modes used in tactical to setup idle Tactical controls. Future modes in tactical to support desired gameplay
@@ -174,6 +174,11 @@ The StarfireAssets plugin provides a custom Asset Manager and two Primary Data A
 When the game starts, all Definitions and Extensions which are part of the project are loaded. Feature Definitions and Extentions are not because no Features are active while in the Shell.
 
 As features are activated and deactivated, the Definitions and Extensions for those Features are loaded and unloaded.
+
+A custom Game Feature Action, `UGameFeatureAction_UpliftCampaign` exists that provides C++ and Blueprint hooks for updating the data model when
+* starting a new campaign
+* on first activation during an in-progress campaign
+* at the start of each tactical match (to only modify model data relevant to tactical)
 
 #### Level Metadata
 

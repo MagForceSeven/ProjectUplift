@@ -10,11 +10,13 @@
 
 #include "CampaignBundles.h"
 #include "Settings/CampaignSettings.h"
+#include "Settings/CampaignPIESettings.h"
 
 #include "SaveGames/UpliftCampaignSaveSubsystem.h"
 
 #include "PersistentDataStore.h"
 #include "DataStoreActors/BattleData.h"
+#include "DataStoreActors/Campaign.h"
 
 #include "GameFeatures/StarfireFeatureData.h"
 #include "GameFeatures/Actions/GameFeatureAction_UpliftCampaign.h"
@@ -73,6 +75,19 @@ void AStrategyGameMode::GameModeReady( )
 void AStrategyGameMode::InitializeForQuickPlay( )
 {
 	Super::InitializeForQuickPlay( );
+
+	const auto CampaignState = ADS_Campaign::GetSingleton( this );
+
+	const auto PIESettings = GetDefault< UCampaignPIESettings >( );
+
+	for (const auto HeroSpec : PIESettings->AdditionalRoster)
+	{
+		if (!HeroSpec.IsValid( ))
+			continue;
+
+		const auto Hero = ADS_Hero::SpawnHero( this, HeroSpec );
+		CampaignState->ActiveHeroes.Push( Hero );
+	}
 }
 
 void AStrategyGameMode::PreTransitionOutOfMode( )

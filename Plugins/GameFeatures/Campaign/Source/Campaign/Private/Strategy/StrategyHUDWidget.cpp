@@ -8,6 +8,7 @@
 
 #include "PersistentDataStore.h"
 #include "DataStoreActors/BattleData.h"
+#include "DataStoreActors/Campaign.h"
 
 #include "DataDefinitions/DataDefinitionLibrary.h"
 #include "Templates/ContainerRandUtilities.h"
@@ -22,7 +23,12 @@ void UStrategyHUDWidget::TransitionToTactical( )
 	const auto DataStore = UPersistentDataStore::GetSubsystem( this );
 	check( DataStore != nullptr );
 
-	DataStore->SpawnSingleton< ADS_BattleData >( );
+	const auto Campaign = ADS_Campaign::GetSingleton( this );
+	const auto BattleData = DataStore->SpawnSingleton< ADS_BattleData >( );
+
+	auto AvailableHeroes = Campaign->ActiveHeroes;
+	while (!AvailableHeroes.IsEmpty( ) && (BattleData->Squad.Num( ) < Campaign->SquadSize))
+		BattleData->Squad.Push( ContainerRand::RandRemove( AvailableHeroes ) );
 
 	const auto Library = UDataDefinitionLibrary::GetInstance( );
 

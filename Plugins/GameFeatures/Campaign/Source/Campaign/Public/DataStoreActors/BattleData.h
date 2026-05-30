@@ -8,6 +8,8 @@
 
 #include "BattleData.generated.h"
 
+class ADS_Hero;
+
 // Enumeration of the ways that a tactical map could be started
 UENUM( )
 enum class ETacticalMode : uint8
@@ -29,6 +31,10 @@ public:
 	// How this battle was started
 	UPROPERTY( BlueprintReadOnly )
 	ETacticalMode TacticalMode = ETacticalMode::Campaign;
+
+	// The heroes that have been sent to this battle
+	UPROPERTY( BlueprintReadOnly )
+	TArray< TObjectPtr< ADS_Hero > > Squad;
 
 	// Game Mode Asset Provider
 	TSet< FPrimaryAssetId > GatherAssetsForModeBundles_Implementation( const FGameplayTag &Mode ) const override;

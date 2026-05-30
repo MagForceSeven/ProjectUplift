@@ -10,6 +10,7 @@
 #include "Campaign.generated.h"
 
 class UCampaignDifficultyExtension;
+class ADS_Hero;
 
 // General data for the overall campaign structure of the game
 UCLASS( Blueprintable )
@@ -23,6 +24,14 @@ public:
 	
 	// Get the configuration for the campaigns difficulty settings
 	[[nodiscard]] const UCampaignDifficultyExtension* GetDifficulty( void ) const { return Difficulty; }
+
+	// The Heroes currently available to the player
+	UPROPERTY( BlueprintReadWrite )
+	TArray< TObjectPtr< ADS_Hero > > ActiveHeroes;
+
+	// The number of heroes sent into tactical
+	UPROPERTY( BlueprintReadOnly )
+	int SquadSize = 3;
 
 private:
 	friend class ACampaignGameMode;
