@@ -17,6 +17,10 @@
 #include "DataStoreActors/BattleData.h"
 #include "PersistentDataStore.h"
 
+#include "GameFeatures/FeatureContentManager.h"
+#include "GameFeatures/StarfireFeatureData.h"
+#include "GameFeatures/Actions/GameFeatureAction_UpliftCampaign.h"
+
 #include UE_INLINE_GENERATED_CPP_BY_NAME(TacticalGameMode)
 
 UE_DEFINE_GAMEPLAY_TAG_COMMENT( ATacticalGameMode::WorldType_Tactical, "World.Type.Tactical", "A world supporting the tactical detailed gameplay." );
@@ -68,6 +72,27 @@ void ATacticalGameMode::TransitionIntoMode( )
 
 	const auto BattleData = DataStore->GetSingleton< ADS_BattleData >( );
 	check( BattleData != nullptr );
+
+	// ---------------------------------------------------------------------------------------------------------------
+	//   Allow the active features to add to the configuration of the new tactical session
+	const auto FeaturesManager = UFeatureContentManager::GetSubsystem( this ); check( FeaturesManager != nullptr );
+	const auto ActiveFeatures = FeaturesManager->GetEnabledFeatures( );
+
+	const auto World = GetWorld( );
+	for (const auto Feature : ActiveFeatures)
+	{
+		if (!ensureAlways( Feature != nullptr ))
+			continue;
+
+		for (const auto Action : Feature->GetActions( ))
+		{
+			const auto CampaignAction = Cast< UGameFeatureAction_UpliftCampaign >( Action );
+			if (CampaignAction == nullptr)
+				continue;
+
+			CampaignAction->OnStartTactical( World );			
+		}
+	}
 }
 
 void ATacticalGameMode::GameModeReady( )

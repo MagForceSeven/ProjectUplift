@@ -21,6 +21,7 @@
 #include "SaveGames/UpliftCampaignSaveUtilities.h"
 #include "GameFeatures/UpliftGameFeatureData.h"
 #include "GameFeatures/UpliftGameFeatureProjectPolicy.h"
+#include "GameFeatures/Actions/GameFeatureAction_UpliftCampaign.h"
 
 #include "DataDefinitions/CampaignDifficultyDefinition.h"
 #include "DataDefinitions/Extensions/CampaignDifficultyExtension.h"
@@ -265,6 +266,38 @@ void ACampaignGameMode::InitializeForNewGame( void )
 
 		if (ensureAlways( CampaignInstance->SimulationSettings->Difficulty != nullptr ))
 			CampaignState->Difficulty = CampaignInstance->SimulationSettings->Difficulty->FindExtensionByClass< UCampaignDifficultyExtension >( );
+	}
+
+	const auto CampaignSettings = GetDefault< UCampaignSettings >( );
+
+	for (const auto HeroSpec : CampaignSettings->InitialRoster)
+	{
+		if (!HeroSpec.IsValid( ))
+			continue;
+
+		const auto Hero = ADS_Hero::SpawnHero( this, HeroSpec );
+		CampaignState->ActiveHeroes.Push( Hero );
+	}
+
+	// ---------------------------------------------------------------------------------------------------------------
+	//   Allow the active features to add to the configuration of the new game state
+	const auto FeaturesManager = UFeatureContentManager::GetSubsystem( this ); check( FeaturesManager != nullptr );
+	const auto ActiveFeatures = FeaturesManager->GetEnabledFeatures( );
+
+	const auto World = GetWorld( );
+	for (const auto Feature : ActiveFeatures)
+	{
+		if (!ensureAlways( Feature != nullptr ))
+			continue;
+
+		for (const auto Action : Feature->GetActions( ))
+		{
+			const auto CampaignAction = Cast< UGameFeatureAction_UpliftCampaign >( Action );
+			if (CampaignAction == nullptr)
+				continue;
+
+			CampaignAction->OnNewCampaign( World );
+		}
 	}
 }
 

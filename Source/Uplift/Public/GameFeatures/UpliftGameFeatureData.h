@@ -13,4 +13,6 @@ class UPLIFT_API UUpliftGameFeatureData : public UStarfireFeatureData
 	GENERATED_BODY( )
 public:
 	UE_DECLARE_GAMEPLAY_TAG_SCOPED( ContentType_Campaign );
+	UE_DECLARE_GAMEPLAY_TAG_SCOPED( ContentType_Developer );
+	UE_DECLARE_GAMEPLAY_TAG_SCOPED( ContentFlag_NewGameOnly );
 };

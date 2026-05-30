@@ -30,6 +30,7 @@ public class Campaign : ModuleRules
 				"DeveloperSettings",
 				"Engine",
 				"EnhancedInput",
+				"GameFeatures",
 				"GameplayTags",
 				"ModelViewViewModel",
 				"UMG",
