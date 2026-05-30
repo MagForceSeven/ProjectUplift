@@ -3,6 +3,8 @@
 #pragma once
 
 #include "DataStoreSingleton.h"
+#include "Framework/GameModeAssetProvider.h"
+#include "Templates/ActorSingletonAccessor.h"
 
 #include "BattleData.generated.h"
 
@@ -18,13 +20,16 @@ enum class ETacticalMode : uint8
 	PIE,
 };
 
-//
+// The configuration of the battle
 UCLASS( Blueprintable )
-class CAMPAIGN_API ADS_BattleData : public ADataStoreSingleton
+class CAMPAIGN_API ADS_BattleData : public ADataStoreSingleton, public IGameModeAssetProvider, public TActorSingletonAccessors< ADS_BattleData >
 {
 	GENERATED_BODY( )
 public:
-	//
+	// How this battle was started
 	UPROPERTY( BlueprintReadOnly )
 	ETacticalMode TacticalMode = ETacticalMode::Campaign;
+
+	// Game Mode Asset Provider
+	TSet< FPrimaryAssetId > GatherAssetsForModeBundles_Implementation( const FGameplayTag &Mode ) const override;
 };

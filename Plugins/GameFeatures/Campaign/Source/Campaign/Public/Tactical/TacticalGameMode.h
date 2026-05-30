@@ -25,5 +25,5 @@ protected:
 	void TransitionIntoMode( void ) override;
 	void GameModeReady( void ) override;
 	void PreTransitionOutOfMode( void ) override;
-	TArray< FPrimaryAssetId > GatherAssetsForModeBundles( void ) const override;
+	TSet< FPrimaryAssetId > GatherAssetsForModeBundles( void ) const override;
 };

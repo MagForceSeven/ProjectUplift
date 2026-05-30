@@ -72,7 +72,7 @@ protected:
 	virtual void PreTransitionOutOfMode( void );
 
 	// Hook for the derived game modes to specify which assets should have the game mode asset bundles loaded for them
-	virtual TArray< FPrimaryAssetId > GatherAssetsForModeBundles( void ) const;
+	virtual TSet< FPrimaryAssetId > GatherAssetsForModeBundles( void ) const;
 
 private:
     // Internal hook for coordinating the population of game data, either from a save or from quickplay configuration settings

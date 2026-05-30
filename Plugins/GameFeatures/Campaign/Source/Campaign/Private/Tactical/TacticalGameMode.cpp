@@ -125,11 +125,14 @@ void ATacticalGameMode::PreTransitionOutOfMode( )
 	SaveSubsystem->TacticalStartCheckpoint = nullptr;
 }
 
-TArray< FPrimaryAssetId > ATacticalGameMode::GatherAssetsForModeBundles( void ) const
+TSet< FPrimaryAssetId > ATacticalGameMode::GatherAssetsForModeBundles( void ) const
 {
 	auto Assets = Super::GatherAssetsForModeBundles( );
 
-	// TODO: Inspect the state of the tactical configuration to pick what assets should have the tactical bundles loaded
+	const auto BattleData = ADS_BattleData::GetSingleton( this );
+	check( BattleData != nullptr );
+
+	Assets.Append( IGameModeAssetProvider::Execute_GatherAssetsForModeBundles( BattleData, WorldType_Tactical ) );
 
 	return Assets;
 }

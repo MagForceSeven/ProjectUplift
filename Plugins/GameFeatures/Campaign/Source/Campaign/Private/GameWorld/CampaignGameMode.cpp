@@ -110,7 +110,7 @@ void ACampaignGameMode::HandleMatchIsWaitingToStart( )
 			{
 				const auto Library = UDataDefinitionLibrary::GetInstance( );
 
-				GameModeBundleAssets = GatherAssetsForModeBundles( );
+				GameModeBundleAssets = GatherAssetsForModeBundles( ).Array( );
 
 				if (!GameModeBundleAssets.IsEmpty( ))
 					StreamHandle = Library->ChangeBundleStateForPrimaryAssetsAndDependencies( GameModeBundleAssets, GameModeBundles, { } );
@@ -376,12 +376,12 @@ void ACampaignGameMode::PreTransitionOutOfMode( void )
 	Library->ChangeBundleStateForPrimaryAssetsAndDependencies( GameModeBundleAssets, { }, GameModeBundles );
 }
 
-TArray< FPrimaryAssetId > ACampaignGameMode::GatherAssetsForModeBundles( void ) const
+TSet< FPrimaryAssetId > ACampaignGameMode::GatherAssetsForModeBundles( void ) const
 {
 	const auto FeaturesManager = UFeatureContentManager::GetSubsystem( this );
 	check( FeaturesManager != nullptr );
 
-	return FeaturesManager->GetEnabledFeatureIDs( );
+	return TSet( FeaturesManager->GetEnabledFeatureIDs( ) );
 }
 
 #if !UE_BUILD_SHIPPING
