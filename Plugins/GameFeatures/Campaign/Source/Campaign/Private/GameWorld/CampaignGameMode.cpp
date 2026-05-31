@@ -26,6 +26,7 @@
 #include "DataDefinitions/CampaignDifficultyDefinition.h"
 #include "DataDefinitions/Extensions/CampaignDifficultyExtension.h"
 #include "DataStoreActors/Campaign.h"
+#include "DataStoreActors/GameplayRand.h"
 
 #include "PersistentDataStore.h"
 #include "DataStoreUtilities.h"
@@ -252,6 +253,7 @@ void ACampaignGameMode::InitializeForNewGame( void )
 	check( CampaignInstance != nullptr );
 
 	const auto CampaignState = DataStore->SpawnSingleton< ADS_Campaign >( );
+	const auto GameplayRand = DataStore->SpawnSingleton< ADS_GameplayRand >( );
 
 	if (CampaignInstance->NewGameSettings != nullptr)
 	{
@@ -259,6 +261,8 @@ void ACampaignGameMode::InitializeForNewGame( void )
 
 		if (ensureAlways( CampaignInstance->NewGameSettings->Difficulty != nullptr ))
 			CampaignState->Difficulty = CampaignInstance->NewGameSettings->Difficulty->FindExtensionByClass< UCampaignDifficultyExtension >( );
+
+		GameplayRand->Seed( CampaignInstance->NewGameSettings->RandomSeed );
 	}
 	else if (CampaignInstance->SimulationSettings != nullptr)
 	{
@@ -266,6 +270,8 @@ void ACampaignGameMode::InitializeForNewGame( void )
 
 		if (ensureAlways( CampaignInstance->SimulationSettings->Difficulty != nullptr ))
 			CampaignState->Difficulty = CampaignInstance->SimulationSettings->Difficulty->FindExtensionByClass< UCampaignDifficultyExtension >( );
+
+		GameplayRand->Seed( CampaignInstance->SimulationSettings->RandomSeed );
 	}
 
 	const auto CampaignSettings = GetDefault< UCampaignSettings >( );
@@ -317,6 +323,12 @@ void ACampaignGameMode::InitializeForQuickPlay( void )
 		CampaignState->Difficulty = DefaultDifficulty->FindExtensionByClass< UCampaignDifficultyExtension >( );
 	else
 		ensureAlwaysMsgf( false, TEXT( "Failed to configure Difficulty for QuickPlay." ) );
+
+	const auto GameplayRand = ADS_GameplayRand::GetSingleton( this );
+	if (PIESettings->bForceSeed)
+		GameplayRand->Seed( PIESettings->RandomSeed );
+	else
+		GameplayRand->Seed( ADS_GameplayRand::CreateNewSeed( ) );
 }
 
 void ACampaignGameMode::TransitionIntoMode( void )

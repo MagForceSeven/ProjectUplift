@@ -20,6 +20,13 @@ public:
 	UPROPERTY( EditDefaultsOnly, BlueprintReadOnly, Config, Category = "General", meta = (DisplayThumbnail = false) )
 	TSoftObjectPtr< const UCampaignDifficultyDefinition > Difficulty;
 
+	UPROPERTY( EditDefaultsOnly, BlueprintReadOnly, Config, meta = (InlineEditConditionToggle) )
+	bool bForceSeed = false;
+	
+	// Seed to use in PIE Sessions
+	UPROPERTY( EditDefaultsOnly, BlueprintReadOnly, Config, Category = "General", meta = (EditCondition = "bForceSeed") )
+	int32 RandomSeed = 0;
+
 	// The heroes that should make up the player squad when launching tactical PIE
 	UPROPERTY( EditDefaultsOnly, BlueprintReadOnly, Config, Category = "Tactical" )
 	TArray< FHeroSpec > PlayerSquad;

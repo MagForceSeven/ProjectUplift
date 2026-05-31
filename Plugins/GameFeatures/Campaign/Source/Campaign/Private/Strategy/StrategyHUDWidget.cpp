@@ -9,9 +9,9 @@
 #include "PersistentDataStore.h"
 #include "DataStoreActors/BattleData.h"
 #include "DataStoreActors/Campaign.h"
+#include "DataStoreActors/GameplayRand.h"
 
 #include "DataDefinitions/DataDefinitionLibrary.h"
-#include "Templates/ContainerRandUtilities.h"
 
 // Engine
 #include "Kismet/GameplayStatics.h"
@@ -23,17 +23,18 @@ void UStrategyHUDWidget::TransitionToTactical( )
 	const auto DataStore = UPersistentDataStore::GetSubsystem( this );
 	check( DataStore != nullptr );
 
+	const auto GameplayRand = ADS_GameplayRand::GetSingleton( this );
 	const auto Campaign = ADS_Campaign::GetSingleton( this );
 	const auto BattleData = DataStore->SpawnSingleton< ADS_BattleData >( );
 
 	auto AvailableHeroes = Campaign->ActiveHeroes;
 	while (!AvailableHeroes.IsEmpty( ) && (BattleData->Squad.Num( ) < Campaign->SquadSize))
-		BattleData->Squad.Push( ContainerRand::RandRemove( AvailableHeroes ) );
+		BattleData->Squad.Push( GameplayRand->RemoveRandom( AvailableHeroes ) );
 
 	const auto Library = UDataDefinitionLibrary::GetInstance( );
 
 	const auto TacticalMaps = Library->GetAllDefinitions< UTacticalMapDefinition >( );
 
-	if (const auto RandomMap = ContainerRand::RandElement( TacticalMaps ))
+	if (const auto RandomMap = GameplayRand->PickRandom( TacticalMaps ))
 		ACampaignGameMode::TransitionToNewGameplayLevel( this, RandomMap->GetLevel( ) );
 }

@@ -16,6 +16,7 @@
 #include "MVVMViewModelBase.h"
 
 // Engine
+#include "DataStoreActors/GameplayRand.h"
 #include "Engine/AssetManager.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/GameStateBase.h"
@@ -309,6 +310,20 @@ bool UUpliftCampaignSave::ApplySaveData( const UObject *WorldContext ) const
 		check( Subsystem != nullptr );
 
 		Subsystem->TacticalStartCheckpoint = CheckpointData;
+	}
+
+	if (!bTravelSave)
+	{
+		const auto Campaign = ADS_Campaign::GetSingleton( WorldContext );
+		check( Campaign != nullptr );
+
+		if (Campaign->bRandomizeSeedOnLoad)
+		{
+			const auto Rand = ADS_GameplayRand::GetSingleton( WorldContext );
+			check( Rand != nullptr );
+
+			Rand->Seed( ADS_GameplayRand::CreateNewSeed( ) );
+		}
 	}
 
 	return true;

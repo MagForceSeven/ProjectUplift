@@ -35,4 +35,8 @@ public:
 	// The selected difficulty for the new game
 	UPROPERTY( EditInstanceOnly, BlueprintReadWrite )
 	TObjectPtr< UCampaignDifficultyDefinition > Difficulty;
+
+	// Seed for this new campaign
+	UPROPERTY( EditInstanceOnly, BlueprintReadWrite )
+	int32 RandomSeed = 0;
 };

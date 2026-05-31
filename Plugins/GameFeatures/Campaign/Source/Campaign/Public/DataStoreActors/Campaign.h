@@ -25,12 +25,16 @@ public:
 	// Get the configuration for the campaigns difficulty settings
 	[[nodiscard]] const UCampaignDifficultyExtension* GetDifficulty( void ) const { return Difficulty; }
 
+	// Whether or not to re-randomize the gameplay random number stream after loading a save
+	UPROPERTY( EditDefaultsOnly, BlueprintReadWrite )
+	bool bRandomizeSeedOnLoad = false;
+
 	// The Heroes currently available to the player
-	UPROPERTY( BlueprintReadWrite )
+	UPROPERTY( VisibleInstanceOnly, BlueprintReadWrite )
 	TArray< TObjectPtr< ADS_Hero > > ActiveHeroes;
 
 	// The number of heroes sent into tactical
-	UPROPERTY( BlueprintReadOnly )
+	UPROPERTY( EditDefaultsOnly, BlueprintReadOnly )
 	int SquadSize = 3;
 
 private:
