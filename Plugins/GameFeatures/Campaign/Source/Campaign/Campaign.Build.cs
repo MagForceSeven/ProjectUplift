@@ -33,6 +33,7 @@ public class Campaign : ModuleRules
 				"GameFeatures",
 				"GameplayTags",
 				"ModelViewViewModel",
+				"SlateCore",
 				"UMG",
 
 				"ModularGameplayActors",

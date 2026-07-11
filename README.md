@@ -64,6 +64,7 @@ Quick Highlights of how each Starfire Plugin is being used:
 * Starfire Messenger
 	* Various uses to broadcast gameplay events
 	* Campaign game modes broadcast a readiness event
+	* A roster event is broadcast when new heroes are added to the active list
 * Starfire Assets
 	* Data Definition Library used as custom Asset Manager
 	* Data Definition used as the base for all game definition assets, eg Campaign Difficulty Definition

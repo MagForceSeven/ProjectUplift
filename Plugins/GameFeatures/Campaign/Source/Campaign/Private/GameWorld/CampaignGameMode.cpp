@@ -40,6 +40,14 @@
 #include "Engine/StreamableManager.h"
 #include "Kismet/GameplayStatics.h"
 
+// Core UObject
+#include "UObject/UObjectIterator.h"
+
+#if WITH_EDITOR
+	// Unreal Ed
+	#include "Editor.h"
+#endif
+
 #include UE_INLINE_GENERATED_CPP_BY_NAME(CampaignGameMode)
 
 UE_DEFINE_GAMEPLAY_TAG_COMMENT( ACampaignGameMode::WorldType_Gameplay, "World.Type.Gameplay", "A world supporting campaign gameplay." );

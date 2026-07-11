@@ -71,7 +71,6 @@ void ATacticalGameMode::InitializeForQuickPlay( )
 
 	const auto PIESettings = GetDefault< UCampaignPIESettings >( );
 
-	for (const auto HeroSpec : PIESettings->AdditionalRoster)
 	for (const auto &HeroSpec : PIESettings->AdditionalRoster)
 	{
 		if (!HeroSpec.IsValid( ))
