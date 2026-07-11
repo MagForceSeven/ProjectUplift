@@ -66,6 +66,7 @@ Quick Highlights of how each Starfire Plugin is being used:
 	* Various uses to broadcast gameplay events
 	* Campaign game modes broadcast a readiness event
 	* A roster event is broadcast when new heroes are added to the active list
+	* An event is broadcast in strategy just before the BattleData is destroyed to give strategy systems a chance to update based on any data that may have been returned from Tactical in that Actor
 * Starfire Assets
 	* Data Definition Library used as custom Asset Manager
 	* Data Definition used as the base for all game definition assets, eg Campaign Difficulty Definition
@@ -227,22 +228,24 @@ These actors could be Data Store Actors that are part of the data model, or othe
 
 Strategy is the gameplay that supports the long-term game progression of Uplift.
 
-As of May 2026, this consists of:
-* A HUD button which configures the state required for Tactical, randomly selects a Tactical map (using the Asset Manager and Level Metadata) and triggers a gameplay transition
+As of July 2026, this consists of:
+* A UI that lists all of the Heroes currently in the player's Roster
+* A HUD button which opens a dialog box that allows configuring a new Hero to be added to the player's Roster
+* A HUD button which opens a screen allowing hero selection and then configures the state required for starting Tactical, randomly selects a Tactical map (using the Asset Manager and Level Metadata) and triggers a gameplay transition
 * The mode handles the return from Tactical and performs some cleanup to eliminate data that is no longer relevant (and only used to transfer information back from Tactical to Strategy)
 * A pause menu (with limited functionality)
 
 Strategy provides a base class for Strategy specific World Subsystems. They leverage the a property of the Uplift World Settings to identify the map as being specific to Strategy Gameplay.
 This base class derives from the subsystems in Game Feature Subsystems (Starfire Game) to allow future feature plugins to create mode specific subsystems that also match the feature activation status.
 
-Strategy (as of May 2026)
+Strategy (as of July 2026)
 ![](./Resources/Strategy.png)
 
 #### Tactical
 
 Tactical is the mode that supports the short-term, repeated tactical gameplay of Uplift.
 
-As of May 2026, this consists of:
+As of July 2026, this consists of:
 * A HUD button which either:
 	* returns to Strategy if Tactical was launched from the Strategy game mode
 	* returns to the Shell if Tactical was launched using the Simulator option
@@ -251,11 +254,12 @@ As of May 2026, this consists of:
 	* this is only done for Tactical PIE. Strategy or the Simulator modes should already have or have configured the game data for Tactical to run correctly
 * A pause menu (with limited functionality)
 * Camera controls which can pan, zoom & rotate the camera within the Tactical map space
+* A UI that lists all the Heroes that make up the Squad that has been assigned to this Tactical game
 
 Tactical provides a base class for Tactical specific World Subsystems. They leverage the a property of the Uplift World Settings to identify the map as being specific to Tactical Gameplay.
 This base class derives from the subsystems in Game Feature Subsystems (Starfire Game) to allow future feature plugins to create mode specific subsystems that also match the feature activation status.
 
-Tactical (as of May 2026)
+Tactical (as of July 2026)
 ![](./Resources/Tactical.png)
 
 Pause Menu (as of May 2026)
