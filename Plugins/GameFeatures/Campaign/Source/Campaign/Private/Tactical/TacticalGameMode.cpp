@@ -37,6 +37,8 @@ ATacticalGameMode::ATacticalGameMode( )
 	HUDClass = ATacticalHUD::StaticClass( );
 
 	GameModeBundles.Push( CampaignBundles::Tactical );
+
+	DefaultViewModels->DefaultViewModels.Push( UTacticalPlayerVM::StaticClass( ) );
 }
 
 void ATacticalGameMode::InitializeCommon( )

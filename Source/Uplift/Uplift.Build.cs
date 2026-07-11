@@ -25,6 +25,7 @@ public class Uplift : ModuleRules
 				"CommonGame",
 
 				"GameFacts",
+				"GameFeatureSubsystems",
 				"StarfireAssets",
 				"StarfireGameCore",
 				"StarfireUI",

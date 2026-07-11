@@ -2,35 +2,22 @@
 
 #include "Tactical/TacticalWorldSubsystems.h"
 
-#include "GameWorld/UpliftWorldSettings.h"
 #include "Tactical/TacticalGameMode.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(TacticalWorldSubsystems)
 
-bool UTacticalWorldSubsystem::ShouldCreateSubsystem( UObject *Outer ) const
+bool UTacticalWorldSubsystem::DoesSupportWorldType( const FGameplayTag &Tag ) const
 {
-	if (!Super::ShouldCreateSubsystem( Outer ))
+	if (!Super::DoesSupportWorldType( Tag ))
 		return false;
 
-	const auto World = CastChecked< UWorld >( Outer );
-	const auto Settings = CastChecked< AUpliftWorldSettings >( World->GetWorldSettings( ) );
-
-	if (!Settings->GetWorldType( ).MatchesTag( ATacticalGameMode::WorldType_Tactical ))
-		return false;
-
-	return true;
+	return Tag.MatchesTag( ATacticalGameMode::WorldType_Tactical );
 }
 
-bool UTacticalTickableWorldSubsystem::ShouldCreateSubsystem( UObject *Outer ) const
+bool UTacticalTickableWorldSubsystem::DoesSupportWorldType( const FGameplayTag &Tag ) const
 {
-	if (!Super::ShouldCreateSubsystem( Outer ))
+	if (!Super::DoesSupportWorldType( Tag ))
 		return false;
 
-	const auto World = CastChecked< UWorld >( Outer );
-	const auto Settings = CastChecked< AUpliftWorldSettings >( World->GetWorldSettings( ) );
-
-	if (!Settings->GetWorldType( ).MatchesTag( ATacticalGameMode::WorldType_Tactical ))
-		return false;
-
-	return true;
+	return Tag.MatchesTag( ATacticalGameMode::WorldType_Tactical );
 }

@@ -2,35 +2,22 @@
 
 #include "Strategy/StrategyWorldSubsystems.h"
 
-#include "GameWorld/UpliftWorldSettings.h"
 #include "Strategy/StrategyGameMode.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(StrategyWorldSubsystems)
 
-bool UStrategyWorldSubsystem::ShouldCreateSubsystem( UObject *Outer ) const
+bool UStrategyWorldSubsystem::DoesSupportWorldType( const FGameplayTag &Tag ) const
 {
-	if (!Super::ShouldCreateSubsystem( Outer ))
+	if (!Super::DoesSupportWorldType( Tag ))
 		return false;
 
-	const auto World = CastChecked< UWorld >( Outer );
-	const auto Settings = CastChecked< AUpliftWorldSettings >( World->GetWorldSettings( ) );
-
-	if (!Settings->GetWorldType( ).MatchesTag( AStrategyGameMode::WorldType_Strategy ))
-		return false;
-
-	return true;
+	return Tag.MatchesTag( AStrategyGameMode::WorldType_Strategy );
 }
 
-bool UStrategyTickableWorldSubsystem::ShouldCreateSubsystem( UObject *Outer ) const
+bool UStrategyTickableWorldSubsystem::DoesSupportWorldType( const FGameplayTag &Tag ) const
 {
-	if (!Super::ShouldCreateSubsystem( Outer ))
+	if (!Super::DoesSupportWorldType( Tag ))
 		return false;
 
-	const auto World = CastChecked< UWorld >( Outer );
-	const auto Settings = CastChecked< AUpliftWorldSettings >( World->GetWorldSettings( ) );
-
-	if (!Settings->GetWorldType( ).MatchesTag( AStrategyGameMode::WorldType_Strategy ))
-		return false;
-
-	return true;
+	return Tag.MatchesTag( AStrategyGameMode::WorldType_Strategy );
 }

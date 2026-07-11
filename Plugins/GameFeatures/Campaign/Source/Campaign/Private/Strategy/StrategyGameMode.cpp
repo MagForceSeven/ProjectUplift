@@ -26,7 +26,7 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(StrategyGameMode)
 
-UE_DEFINE_GAMEPLAY_TAG_COMMENT( AStrategyGameMode::WorldType_Strategy, "World.Type.Strategy", "A world supporting the strategy meta-game progression." );
+UE_DEFINE_GAMEPLAY_TAG_COMMENT( AStrategyGameMode::WorldType_Strategy, "World.Type.Gameplay.Strategy", "A world supporting the strategy meta-game progression." );
 
 AStrategyGameMode::AStrategyGameMode( )
 {

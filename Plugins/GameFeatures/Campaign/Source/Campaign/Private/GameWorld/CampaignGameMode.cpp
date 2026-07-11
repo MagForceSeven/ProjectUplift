@@ -42,6 +42,8 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(CampaignGameMode)
 
+UE_DEFINE_GAMEPLAY_TAG_COMMENT( ACampaignGameMode::WorldType_Gameplay, "World.Type.Gameplay", "A world supporting campaign gameplay." );
+
 ACampaignGameMode::ACampaignGameMode( )
 {
 	GameStateClass = ACampaignGameState::StaticClass( );

@@ -4,6 +4,8 @@
 
 #include "GameWorld/UpliftGameMode.h"
 
+#include "NativeGameplayTags_SF.h"
+
 #include "CampaignGameMode.generated.h"
 
 struct FStreamableHandle;
@@ -26,6 +28,8 @@ class CAMPAIGN_API ACampaignGameMode : public AUpliftGameMode
 {
 	GENERATED_BODY( )
 public:
+	UE_DECLARE_GAMEPLAY_TAG_SCOPED( WorldType_Gameplay );
+
 	ACampaignGameMode( );
 
 	// Game Mode API
