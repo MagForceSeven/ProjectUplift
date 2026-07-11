@@ -29,7 +29,7 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(TacticalGameMode)
 
-UE_DEFINE_GAMEPLAY_TAG_COMMENT( ATacticalGameMode::WorldType_Tactical, "World.Type.Tactical", "A world supporting the tactical detailed gameplay." );
+UE_DEFINE_GAMEPLAY_TAG_COMMENT( ATacticalGameMode::WorldType_Tactical, "World.Type.Gameplay.Tactical", "A world supporting the tactical detailed gameplay." );
 
 ATacticalGameMode::ATacticalGameMode( )
 {
