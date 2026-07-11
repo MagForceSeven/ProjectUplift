@@ -3,6 +3,7 @@
 #pragma once
 
 #include "GameWorld/UpliftGameMode.h"
+#include "Messenger/MessageTypes.h"
 
 #include "NativeGameplayTags_SF.h"
 
@@ -94,3 +95,11 @@ private:
 	// The collection of assets that had bundles applied so that they can be undone when leaving the mode
 	TArray< FPrimaryAssetId > GameModeBundleAssets;
 };
+
+// Base type for messages indicating a readiness state of campaign game modes
+USTRUCT( )
+struct FMessage_CampaignModeReady : public FSf_Message_Immediate
+{
+	GENERATED_BODY( )
+};
+SET_MESSAGE_TYPE_AS_ABSTRACT( FMessage_CampaignModeReady )

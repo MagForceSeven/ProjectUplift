@@ -21,6 +21,8 @@
 #include "GameFeatures/StarfireFeatureData.h"
 #include "GameFeatures/Actions/GameFeatureAction_UpliftCampaign.h"
 
+
+#include "Messenger/Messenger.h"
 // Engine
 #include "Kismet/GameplayStatics.h"
 
@@ -68,8 +70,13 @@ void AStrategyGameMode::GameModeReady( )
 		check( DataStore != nullptr );
 
 		const auto BattleData = DataStore->GetSingleton< ADS_BattleData >( );
+
+		UStarfireMessenger::GetSubsystem( this )->Broadcast< FMessage_BattleDataCleanup >( { .BattleData=BattleData } );
+		
 		BattleData->Destroy( );
 	}
+
+	UStarfireMessenger::GetSubsystem( this )->Broadcast< FMessage_StrategyModeReady >( );
 }
 
 void AStrategyGameMode::InitializeForQuickPlay( )
@@ -80,13 +87,13 @@ void AStrategyGameMode::InitializeForQuickPlay( )
 
 	const auto PIESettings = GetDefault< UCampaignPIESettings >( );
 
-	for (const auto HeroSpec : PIESettings->AdditionalRoster)
+	for (const auto &HeroSpec : PIESettings->AdditionalRoster)
 	{
 		if (!HeroSpec.IsValid( ))
 			continue;
 
 		const auto Hero = ADS_Hero::SpawnHero( this, HeroSpec );
-		CampaignState->ActiveHeroes.Push( Hero );
+		CampaignState->AddToRoster( Hero );
 	}
 }
 

@@ -27,3 +27,10 @@ protected:
 	void PreTransitionOutOfMode( void ) override;
 	TSet< FPrimaryAssetId > GatherAssetsForModeBundles( void ) const override;
 };
+
+// Message indicating a readiness state of tactical game mode
+USTRUCT( )
+struct FMessage_TacticalModeReady : public FMessage_CampaignModeReady
+{
+	GENERATED_BODY( )
+};

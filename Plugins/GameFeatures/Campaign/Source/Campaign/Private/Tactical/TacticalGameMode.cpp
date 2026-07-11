@@ -24,6 +24,9 @@
 
 #include "Settings/CampaignPIESettings.h"
 
+
+#include "Messenger/Messenger.h"
+
 #include UE_INLINE_GENERATED_CPP_BY_NAME(TacticalGameMode)
 
 UE_DEFINE_GAMEPLAY_TAG_COMMENT( ATacticalGameMode::WorldType_Tactical, "World.Type.Tactical", "A world supporting the tactical detailed gameplay." );
@@ -69,12 +72,13 @@ void ATacticalGameMode::InitializeForQuickPlay( )
 	const auto PIESettings = GetDefault< UCampaignPIESettings >( );
 
 	for (const auto HeroSpec : PIESettings->AdditionalRoster)
+	for (const auto &HeroSpec : PIESettings->AdditionalRoster)
 	{
 		if (!HeroSpec.IsValid( ))
 			continue;
 
 		const auto Hero = ADS_Hero::SpawnHero( this, HeroSpec );
-		CampaignState->ActiveHeroes.Push( Hero );
+		CampaignState->AddToRoster( Hero );
 		BattleData->Squad.Push( Hero );
 
 		if (BattleData->Squad.Num( ) >= CampaignState->SquadSize)
@@ -136,6 +140,8 @@ void ATacticalGameMode::GameModeReady( )
 		}
 	});
 	UUpliftCampaignSaveUtilities::CreateCheckpointSave_Async( this, OnCheckpointComplete );
+
+	UStarfireMessenger::GetSubsystem( this )->Broadcast< FMessage_TacticalModeReady >( );
 }
 
 void ATacticalGameMode::PreTransitionOutOfMode( )

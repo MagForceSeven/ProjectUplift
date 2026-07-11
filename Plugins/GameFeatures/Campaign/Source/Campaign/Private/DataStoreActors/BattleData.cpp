@@ -10,7 +10,7 @@ TSet< FPrimaryAssetId > ADS_BattleData::GatherAssetsForModeBundles_Implementatio
 {
 	TSet< FPrimaryAssetId > Results;
 
-	for (const auto Hero : Squad)
+	for (const auto &Hero : Squad)
 		IGameModeAssetProvider::Execute_GatherAssetsForModeBundles( Hero, Mode );
 
 	return Results;

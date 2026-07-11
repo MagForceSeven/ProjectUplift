@@ -47,6 +47,7 @@ public class Campaign : ModuleRules
 				"StarfireAssets",
 				"StarfireDataActors",
 				"StarfireGameCore",
+				"StarfireMessenger",
 				"StarfirePersistence",
 				"StarfireSaveData",
 				"StarfireUI",

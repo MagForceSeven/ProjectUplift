@@ -62,7 +62,8 @@ Quick Highlights of how each Starfire Plugin is being used:
 * Starfire Save Data
 	* Used for Campaign Save Game to support user and level transition saves
 * Starfire Messenger
-	* Not yet in use
+	* Various uses to broadcast gameplay events
+	* Campaign game modes broadcast a readiness event
 * Starfire Assets
 	* Data Definition Library used as custom Asset Manager
 	* Data Definition used as the base for all game definition assets, eg Campaign Difficulty Definition

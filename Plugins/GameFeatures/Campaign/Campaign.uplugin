@@ -40,6 +40,15 @@
 			]
 		},
 		{
+			"Name": "StarfireMessenger",
+			"Enabled": true,
+			"SupportedTargetPlatforms": [
+			  "Win64",
+			  "Linux",
+			  "LinuxArm64"
+			]
+		},
+		{
 			"Name": "StarfirePersistence",
 			"Enabled": true,
 			"SupportedTargetPlatforms": [

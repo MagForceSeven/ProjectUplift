@@ -42,3 +42,24 @@ private:
 	//  Custom Thunks
 	DECLARE_FUNCTION(execHandleNewFeatureActivations);
 };
+
+class ADS_BattleData;
+
+// Message indicating the BattleData is about to be destroyed
+// This is the final opportunity to use information from the battle data to update strategy
+USTRUCT( )
+struct FMessage_BattleDataCleanup : public FSf_Message_Immediate
+{
+	GENERATED_BODY( )
+public:
+	//
+	UPROPERTY( BlueprintReadOnly )
+	TObjectPtr< ADS_BattleData > BattleData;
+};
+
+// Message indicating a readiness state of strategy game mode
+USTRUCT( )
+struct FMessage_StrategyModeReady : public FMessage_CampaignModeReady
+{
+	GENERATED_BODY( )
+};

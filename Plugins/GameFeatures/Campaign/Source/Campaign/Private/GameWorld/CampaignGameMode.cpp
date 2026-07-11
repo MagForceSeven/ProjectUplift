@@ -278,7 +278,7 @@ void ACampaignGameMode::InitializeForNewGame( void )
 
 	const auto CampaignSettings = GetDefault< UCampaignSettings >( );
 
-	for (const auto HeroSpec : CampaignSettings->InitialRoster)
+	for (const auto &HeroSpec : CampaignSettings->InitialRoster)
 	{
 		if (!HeroSpec.IsValid( ))
 			continue;

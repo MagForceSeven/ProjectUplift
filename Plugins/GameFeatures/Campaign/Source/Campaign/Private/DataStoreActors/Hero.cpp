@@ -120,6 +120,6 @@ struct FHeroExecs : public FExecSF
 			return;
 		}
 
-		Campaign->ActiveHeroes.Push( NewHero );
+		Campaign->AddToRoster( NewHero );
 	}
 } GHeroExecs;
