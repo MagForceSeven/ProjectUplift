@@ -45,6 +45,7 @@ public class Uplift : ModuleRules
 				"ModularGameplayActors",
 
 				"ActorCollections",
+				"ActorViewModels",
 				"StarfireUtilities",
 				// ... add private dependencies that you statically link with here ...	
 			}

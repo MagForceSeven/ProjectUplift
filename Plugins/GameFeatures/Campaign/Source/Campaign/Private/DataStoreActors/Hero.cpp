@@ -54,6 +54,16 @@ TSet< FPrimaryAssetId > ADS_Hero::GatherAssetsForModeBundles_Implementation( con
 	return Results;
 }
 
+UTexture2D * ADS_Hero::GetUIImage_Large( ) const
+{
+	return ClassDefinition->GetUIImage_Large( );
+}
+
+TSoftObjectPtr<UTexture2D> ADS_Hero::GetUIImage_Large_Soft( ) const
+{
+	return ClassDefinition->GetUIImage_Large_Soft( );
+}
+
 #if WITH_EDITOR
 FString ADS_Hero::GetCustomActorLabel_Implementation( ) const
 {

@@ -56,6 +56,7 @@ Quick Highlights of how each Starfire Plugin is being used:
 * Starfire UI
 	* UI Layout configuration
 	* Screen & Dialog patterns for gameplay access
+	* Actor View Models are used for the underlying management of view models
 * Starfire Persistence
 	* Data Store Actors for actors that define the game model data. eg DS_Campaign & DS_BattleData for overall campaign and individual tactical instances, generally classes in the DataStoreActors source subdirectory
 	* Persistent Actor Archiver used in Campaign Save Game for serializing actor data

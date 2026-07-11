@@ -8,6 +8,8 @@
 #include "GameWorld/UpliftHUD.h"
 #include "GameWorld/UpliftPawn.h"
 
+#include "Components/GameModeViewModels.h"
+
 #include UE_INLINE_GENERATED_CPP_BY_NAME(UpliftGameMode)
 
 AUpliftGameMode::AUpliftGameMode( )
@@ -17,4 +19,6 @@ AUpliftGameMode::AUpliftGameMode( )
 	PlayerStateClass = AUpliftPlayerState::StaticClass( );
 	DefaultPawnClass = AUpliftPawn::StaticClass( );
 	HUDClass = AUpliftHUD::StaticClass( );
+
+	DefaultViewModels = CreateDefaultSubobject< UGameModeViewModels >( TEXT( "DefaultViewModels" ) );
 }

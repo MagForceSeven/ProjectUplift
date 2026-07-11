@@ -37,6 +37,7 @@ public:
 	// Display Param API
 	[[nodiscard]] FText GetUIDisplayName() const override { return DisplayName; }
 	[[nodiscard]] UTexture2D* GetUIImage_Large( ) const override { return Icon.Get( ); }
+	[[nodiscard]] TSoftObjectPtr< UTexture2D > GetUIImage_Large_Soft( ) const override { return Icon; }
 
 	// Verifiable Asset API
 	void Verify( const UObject *WorldContext ) override;

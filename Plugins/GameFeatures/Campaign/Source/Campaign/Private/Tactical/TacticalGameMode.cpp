@@ -24,6 +24,8 @@
 
 #include "Settings/CampaignPIESettings.h"
 
+#include "Components/GameModeViewModels.h"
+#include "UI/ViewModels/TacticalPlayerVM.h"
 
 #include "Messenger/Messenger.h"
 

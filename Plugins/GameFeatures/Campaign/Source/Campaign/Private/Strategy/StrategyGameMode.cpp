@@ -21,8 +21,11 @@
 #include "GameFeatures/StarfireFeatureData.h"
 #include "GameFeatures/Actions/GameFeatureAction_UpliftCampaign.h"
 
+#include "Components/GameModeViewModels.h"
+#include "UI/ViewModels/RosterVM.h"
 
 #include "Messenger/Messenger.h"
+
 // Engine
 #include "Kismet/GameplayStatics.h"
 
@@ -38,6 +41,8 @@ AStrategyGameMode::AStrategyGameMode( )
 	HUDClass = AStrategyHUD::StaticClass( );
 
 	GameModeBundles.Push( CampaignBundles::Strategy );
+
+	DefaultViewModels->DefaultViewModels.Push( URosterVM::StaticClass( ) );
 }
 
 void AStrategyGameMode::LaunchNewGame( const UObject *WorldContext )

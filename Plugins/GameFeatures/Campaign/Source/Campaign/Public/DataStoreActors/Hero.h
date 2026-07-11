@@ -45,6 +45,8 @@ public:
 
 	// Display Param Interface API
 	[[nodiscard]] FText GetUIDisplayName( ) const override { return HeroName; }
+	[[nodiscard]] UTexture2D* GetUIImage_Large( ) const override;
+	[[nodiscard]] TSoftObjectPtr< UTexture2D > GetUIImage_Large_Soft( ) const override;
 
 #if WITH_EDITOR
 	FString GetCustomActorLabel_Implementation( ) const override;

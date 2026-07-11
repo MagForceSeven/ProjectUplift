@@ -13,8 +13,4 @@ class CAMPAIGN_API UStrategyHUDWidget : public UCampaignHUDWidget
 	GENERATED_BODY( )
 public:
 
-protected:
-	// Transition to a random tactical map
-	UFUNCTION( BlueprintCallable )
-	void TransitionToTactical( );
 };
