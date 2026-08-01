@@ -14,7 +14,7 @@ int32 UUpliftCampaignSaveHeader::GetFileTypeTag( void ) const
 	return 'UPLC';
 }
 
-UUpliftCampaignSaveHeader* UUpliftCampaignSaveUtilities::CreateSaveGameHeader( const UUpliftCampaignSave *SaveGameData, ESaveGameType SaveType, const FString &DisplayName )
+UUpliftCampaignSaveHeader* UUpliftCampaignSaveUtilities::CreateSaveGameHeader( const UUpliftCampaignSave *SaveGameData, const FString &SlotName, ESaveGameType SaveType, const FString &DisplayName )
 {
 	if (!ensureAlways( SaveGameData != nullptr ))
 		return nullptr;
@@ -23,7 +23,11 @@ UUpliftCampaignSaveHeader* UUpliftCampaignSaveUtilities::CreateSaveGameHeader( c
 
 	Header->FillCoreData( SaveGameData, DisplayName );
 
+	Header->SlotName = SlotName;
 	Header->SaveType = SaveType;
+	Header->WorldType = SaveGameData->WorldType;
+	Header->UserDisplayName = SaveGameData->UserDisplayName;
+	Header->bAutomatedDisplayName = SaveGameData->bAutomatedDisplayName;
 	Header->Descriptor1 = SaveGameData->Descriptor1;
 	Header->Descriptor2 = SaveGameData->Descriptor2;
 	Header->CampaignID = SaveGameData->CampaignID;

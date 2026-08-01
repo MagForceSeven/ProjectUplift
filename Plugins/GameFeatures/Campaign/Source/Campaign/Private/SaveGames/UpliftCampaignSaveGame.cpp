@@ -7,6 +7,10 @@
 #include "SaveGames/UpliftCampaignSaveSubsystem.h"
 
 #include "DataStoreActors/Campaign.h"
+#include "Strategy/StrategyGameMode.h"
+#include "Tactical/TacticalGameMode.h"
+
+#include "GameWorld/UpliftWorldSettings.h"
 
 #include "DataStoreActor.h"
 #include "PersistenceComponent.h"
@@ -23,7 +27,142 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(UpliftCampaignSaveGame)
 
-UUpliftCampaignSave* UUpliftCampaignSaveUtilities::CreateSaveData( const UObject *WorldContext, bool bIsTravelSave )
+#define LOCTEXT_NAMESPACE "Uplift_SaveGames"
+
+[[nodiscard]] static FText GenerateTacticalUserDisplayName( const UWorld *World )
+{
+	// TODO: Develop a real automated save name for tactical saves
+	return LOCTEXT( "TacticalManualSave_Format", "Tactical User Save" );
+}
+
+[[nodiscard]] static FText GenerateStrategyUserDisplayName( const UWorld *World )
+{
+	// TODO: Develop a real automated save name for strategy saves
+	return LOCTEXT( "StrategyManualSave_Format", "Strategy User Save" );
+}
+
+[[nodiscard]] static FText GenerateTacticalAutoSaveDisplayName( const UWorld *World )
+{
+	// TODO: Develop a real automated save name for tactical saves
+	return LOCTEXT( "TacticalAutoSave_Format", "Autosave - Tactical"  );
+}
+
+[[nodiscard]] static FText GenerateStrategyAutoSaveDisplayName( const UWorld *World )
+{
+	// TODO: Develop a real automated save name for strategy saves
+	return LOCTEXT( "StrategyAutoSave_Format", "Autosave - Strategy" );
+}
+
+static void FillSaveGameDisplayData( UUpliftCampaignSave *SaveGame, const UWorld *World, const FText &DesiredName )
+{
+	check( SaveGame != nullptr );
+	check( World != nullptr );
+	
+	const auto Settings = CastChecked< AUpliftWorldSettings >( World->GetWorldSettings( ) );
+	const auto WorldType = Settings->GetWorldType( );
+
+	const bool bIsTactical = WorldType.MatchesTag( ATacticalGameMode::WorldType_Tactical );
+	const bool bIsStrategy = WorldType.MatchesTag( AStrategyGameMode::WorldType_Strategy );
+	ensureAlways( bIsTactical ^ bIsStrategy );
+
+	switch (SaveGame->SaveType)
+	{
+		case ESaveGameType::User:
+		case ESaveGameType::Developer:
+			if (!DesiredName.IsEmpty( ))
+			{
+				SaveGame->UserDisplayName = DesiredName;
+			}
+			else
+			{
+				SaveGame->UserDisplayName =	bIsTactical ? GenerateTacticalUserDisplayName( World ) : 
+											bIsStrategy ? GenerateStrategyUserDisplayName( World ) : 
+															INVTEXT( "World Type Error" );
+				SaveGame->bAutomatedDisplayName = true;
+			}
+			break;
+
+		// Treat auto-saves and checkpoints as the same thing string-wise, we'll save checkpoints as auto-saves
+		case ESaveGameType::Auto:
+		case ESaveGameType::Checkpoint:
+			SaveGame->UserDisplayName =	bIsTactical ? GenerateTacticalAutoSaveDisplayName( World ) : 
+										bIsStrategy ? GenerateStrategyAutoSaveDisplayName( World ) : 
+														INVTEXT( "World Type Error" );
+			break;
+
+		case ESaveGameType::Travel:
+			SaveGame->UserDisplayName = INVTEXT( "Travel Save" );
+			break;
+
+		case ESaveGameType::Quick:
+			SaveGame->UserDisplayName = LOCTEXT( "QuickSaveFriendlyName", "Quick Save" );
+			break;
+	}
+
+	// Descriptor1 is a timestamp for the save game
+	{
+		const auto& I18N = FInternationalization::Get( );
+		const auto Culture = I18N.GetCurrentCulture( );
+	
+		const auto DateTime_Format = LOCTEXT( "SaveGame_TimeFormat", "%A, %B %e, %Y at %l:%M %p" ).ToString( );
+	
+		SaveGame->Descriptor1 = FText::AsDateTime( FDateTime::Now( ), DateTime_Format, FText::GetInvariantTimeZone( ), Culture );
+	}
+	
+	// Descriptor2 is a mode specific descriptor
+	if (bIsTactical)
+	{
+		// TODO: Develop a real localized string based on the current map
+		SaveGame->Descriptor2 = FText::FromString( World->GetName( ) );
+	}
+	else if (bIsStrategy)
+	{
+		// TODO: Develop a real localized string based on the current map
+		SaveGame->Descriptor2 = LOCTEXT( "StrategyDescriptor", "Home Base" );
+	}
+	else
+	{
+		SaveGame->Descriptor2 = INVTEXT( "World Type Error" );
+	}
+}
+
+#undef LOCTEXT_NAMESPACE
+
+FText UUpliftCampaignSaveUtilities::GenerateDefaultDisplayName( const UObject *WorldContext )
+{
+	const auto World = GEngine->GetWorldFromContextObject( WorldContext, EGetWorldErrorMode::Assert );
+	if (World == nullptr)
+		return INVTEXT( "World Error" );
+
+	const auto Settings = CastChecked< AUpliftWorldSettings >( World->GetWorldSettings( ) );
+	const auto WorldType = Settings->GetWorldType( );
+	
+	if (WorldType.MatchesTag( ATacticalGameMode::WorldType_Tactical ))
+		return GenerateTacticalUserDisplayName( World );
+	
+	if (WorldType.MatchesTag( AStrategyGameMode::WorldType_Strategy ))
+		return GenerateStrategyUserDisplayName( World );
+	
+	return INVTEXT( "World Type Error" );
+}
+
+FString UUpliftCampaignSaveUtilities::MakeSafeForSlotName( const FText &DisplayName )
+{
+	static const TSet< TCHAR > InvalidChars = { '<', '>', ':', '"', '/', '\\', '|', '?', '*' };
+	auto String = DisplayName.ToString( );
+
+	String = String.Replace( TEXT( " " ), TEXT( "_" ) );
+	
+	for (int idx = String.Len( ) - 1; idx >= 0; --idx )
+	{
+		if (InvalidChars.Contains( String[ idx ] ))
+			String.RemoveAt( idx );
+	}
+
+	return String;
+}
+
+UUpliftCampaignSave* UUpliftCampaignSaveUtilities::CreateSaveData( const UObject *WorldContext, const FText &DisplayName, ESaveGameType SaveType )
 {
 	check( IsInGameThread( ) );
 
@@ -45,9 +184,14 @@ UUpliftCampaignSave* UUpliftCampaignSaveUtilities::CreateSaveData( const UObject
 		Path = FSoftObjectPath( FTopLevelAssetPath( UWorld::RemovePIEPrefix( AssetPath ) ), Path.GetSubPathString( ) );
 #endif
 
+	const auto Settings = CastChecked< AUpliftWorldSettings >( CurrentWorld->GetWorldSettings( ) );
+	SaveGame->WorldType = Settings->GetWorldType( );
+
 	SaveGame->WorldToLoad = Path;
-	SaveGame->bTravelSave = bIsTravelSave;
+	SaveGame->SaveType = SaveType;
 	SaveGame->CampaignID = ADS_Campaign::GetCampaignID( WorldContext );
+	
+	FillSaveGameDisplayData( SaveGame, CurrentWorld, DisplayName );
 
 	FMemoryWriter MemoryWriter( SaveGame->PersistentActorData );
 	FPersistentActorWriter Archiver( MemoryWriter );
@@ -55,7 +199,7 @@ UUpliftCampaignSave* UUpliftCampaignSaveUtilities::CreateSaveData( const UObject
 
 	static const auto SaveSettings = GetDefault< UUpliftCampaignSaveSettings >( );
 
-	if (bIsTravelSave)
+	if (SaveType == ESaveGameType::Travel)
 	{
 		Archiver.ObjectFilter = [ /*Settings = SaveSettings,*/ ]( const UObject *Object ) -> bool
 		{
@@ -237,9 +381,9 @@ void UUpliftCampaignSaveUtilities::FillCheckpointData_Async( const UObject *Worl
 		OnCompletion.Execute( WorldContext, SaveGame, false );
 }
 
-UUpliftCampaignSave* UUpliftCampaignSaveUtilities::CreateAndFillSaveData( const UObject *WorldContext, bool IncludeCheckpointData, bool bTravelSave )
+UUpliftCampaignSave* UUpliftCampaignSaveUtilities::CreateAndFillSaveData( const UObject *WorldContext, const FText &DisplayName, bool IncludeCheckpointData, ESaveGameType SaveType )
 {
-	const auto SaveData = CreateSaveData( WorldContext, bTravelSave );
+	const auto SaveData = CreateSaveData( WorldContext, DisplayName, SaveType );
 
 	if (IncludeCheckpointData && !FillCheckpointData( WorldContext, SaveData ))
 		return nullptr;
@@ -312,7 +456,7 @@ bool UUpliftCampaignSave::ApplySaveData( const UObject *WorldContext ) const
 		Subsystem->TacticalStartCheckpoint = CheckpointData;
 	}
 
-	if (!bTravelSave)
+	if (SaveType != ESaveGameType::Travel)
 	{
 		const auto Campaign = ADS_Campaign::GetSingleton( WorldContext );
 		check( Campaign != nullptr );

@@ -127,6 +127,8 @@ void ATacticalGameMode::GameModeReady( )
 {
 	Super::GameModeReady( );
 
+	UStarfireMessenger::GetSubsystem( this )->Broadcast< FMessage_TacticalModeReady >( );
+
 	// TODO: Move this to someplace else as more tactical structure is put into place
 	const auto OnCheckpointComplete = FCreateCheckpointComplete::CreateLambda( [ ]( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, bool Success )
 	{
@@ -136,13 +138,13 @@ void ATacticalGameMode::GameModeReady( )
 			check( SaveSubsystem != nullptr );
 
 			SaveSubsystem->TacticalStartCheckpoint = CheckpointData;
-							
-			UUpliftCampaignSaveUtilities::SaveCheckpointToSlot_Async( WorldContext, SaveSubsystem->TacticalStartCheckpoint, "TacticalStart", 0, ESaveGameType::Developer, "Developer - Mission Start" );
+
+			UUpliftCampaignSaveUtilities::SaveCheckpointToSlot_Async( WorldContext, SaveSubsystem->TacticalStartCheckpoint, "TacticalStart", 0, ESaveGameType::Auto );
 		}
 	});
-	UUpliftCampaignSaveUtilities::CreateCheckpointSave_Async( this, OnCheckpointComplete );
 
-	UStarfireMessenger::GetSubsystem( this )->Broadcast< FMessage_TacticalModeReady >( );
+	if (UUpliftCampaignSaveSubsystem::GetSaveGameLoadingType( this ) == EExecGameLoading::LevelTransition)
+		UUpliftCampaignSaveUtilities::CreateCheckpointSave_Async( this, OnCheckpointComplete );
 }
 
 void ATacticalGameMode::PreTransitionOutOfMode( )

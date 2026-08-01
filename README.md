@@ -233,7 +233,7 @@ As of July 2026, this consists of:
 * A HUD button which opens a dialog box that allows configuring a new Hero to be added to the player's Roster
 * A HUD button which opens a screen allowing hero selection and then configures the state required for starting Tactical, randomly selects a Tactical map (using the Asset Manager and Level Metadata) and triggers a gameplay transition
 * The mode handles the return from Tactical and performs some cleanup to eliminate data that is no longer relevant (and only used to transfer information back from Tactical to Strategy)
-* A pause menu (with limited functionality)
+* A pause menu (Options menu disabled/non-functional)
 
 Strategy provides a base class for Strategy specific World Subsystems. They leverage the a property of the Uplift World Settings to identify the map as being specific to Strategy Gameplay.
 This base class derives from the subsystems in Game Feature Subsystems (Starfire Game) to allow future feature plugins to create mode specific subsystems that also match the feature activation status.
@@ -252,7 +252,7 @@ As of July 2026, this consists of:
 	* ends the PIE session if Tactical was lauched using PIE from an open Tactical map
 * Optionally performs game data configuration of Tactical specific data required to run the Tactical gameplay correctly
 	* this is only done for Tactical PIE. Strategy or the Simulator modes should already have or have configured the game data for Tactical to run correctly
-* A pause menu (with limited functionality)
+* A pause menu (Options menu disabled/non-functional)
 * Camera controls which can pan, zoom & rotate the camera within the Tactical map space
 * A UI that lists all the Heroes that make up the Squad that has been assigned to this Tactical game
 
@@ -284,4 +284,8 @@ When a transition is requested, a few things happen:
 Given the use of save games for the transitions, it is intended that user saves also function as expected at all times when a player could make a save.
 The saves do support versioning which allows for old saves to be made unsupported, but within a single build Uplift should be able to load & play correctly saves created from the same build.
 
-As of May 2026, the pause menu does not support any save game UI's. However console commands are available that allow for exercising this feature.
+Load Game Menu (as of August 2026)
+![](./Resources/LoadGame.png)
+
+Save Game Menu (as of August 2026)
+![](./Resources/SaveGame.png)

@@ -21,6 +21,9 @@
 enum class EUpliftCampaignSaveVersion : uint32
 {
 	Development = 0x00000001,
+	
+	EmbeddedSlotName, // embedded the slot name into the header
+	SaveType, // changed bTravelSave to the ESaveGameType
 
 	// Add all format change versions above this entry
 	Current_Plus_One,
@@ -29,8 +32,8 @@ enum class EUpliftCampaignSaveVersion : uint32
 	RTM = 0x80000000,
 
 	// The minimum version allowed on either build
-	Development_Minimum = Development,
-	RTM_Minimum = RTM | Development,
+	Development_Minimum = SaveType,
+	RTM_Minimum = RTM | SaveType,
 	
 #if !SF_BUILD_RTM
 	Build_Minimum = Development_Minimum,

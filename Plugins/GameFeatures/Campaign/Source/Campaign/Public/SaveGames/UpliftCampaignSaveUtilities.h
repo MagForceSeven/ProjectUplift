@@ -24,6 +24,12 @@ enum class ESaveGameType : uint8
 
 	// Same as Auto, but at a time that won't ship
 	Developer,
+
+	// A save created for the purpose of transferring data across a level transition
+	Travel UMETA( Hidden ),
+
+	// A save that only resides in memory to hold a snapshot of game state
+	Checkpoint UMETA( Hidden ),
 };
 
 // Condensed information for a save that has been found on disk
@@ -63,6 +69,10 @@ DECLARE_DELEGATE_OneParam( FSavesExistAsyncCallback, bool /*Success*/ );
 DECLARE_DELEGATE_OneParam( FEnumerateHeadersComplete, const TArray< FEnumeratedSaveGameHeader > &Headers );
 // Callback for the completion of an async creation of save game data (from the time that the checkpoint was requested, not from the callback invocation)
 DECLARE_DELEGATE_ThreeParams( FCreateCheckpointComplete, const UObject* /*WorldContext*/, const UUpliftCampaignSave* /*CheckpointData*/, bool /*Success*/ );
+// Callback for the creation of a new save game
+DECLARE_MULTICAST_DELEGATE_ThreeParams( FSaveGameCreated, int32 /*UserIndex*/, const FString& /*SlotName*/, const UUpliftCampaignSaveHeader* /*Header*/ );
+// Callback for the deletion of an existing save game
+DECLARE_MULTICAST_DELEGATE_TwoParams( FSaveGameDeleted, int32 /*UserIndex*/, const FString& /*SlotName*/ );
 
 // Game specific utilities for saving the state of the game to a file
 UCLASS( )
@@ -70,24 +80,33 @@ class CAMPAIGN_API UUpliftCampaignSaveUtilities : public USaveDataUtilities
 {
 	GENERATED_BODY( )
 public:
+	// Callback which broadcasts the creation of new save games
+	static FSaveGameCreated OnSaveGameCreated;
+	// Callback which broadcasts the deletion of save games
+	static FSaveGameDeleted OnSaveGameDeleted;
+	
 	// Determine the list of filenames currently in use
-	UFUNCTION( BlueprintCallable, Category = "Save Games" )
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games" )
 	[[nodiscard]] static TArray< FString > EnumerateSlotNames( int32 UserIndex );
 
-	// Determine a slot name that would work for a particular type of save
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (AdvancedDisplay = "SaveType") )
-	[[nodiscard]] static FString GetUnusedSlotName( int32 UserIndex, ESaveGameType SaveType );
+	// Determine the auto-generated display name that should be used for saves made in the current game state
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (WorldContext = "WorldContext") )
+	[[nodiscard]] static FText GenerateDefaultDisplayName( const UObject *WorldContext );
+	
+	// Convert a user entered string to one that is legal to use as a slot name
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games" )
+	[[nodiscard]] static FString MakeSafeForSlotName( const FText &DisplayName );
 
 	// Remove a save slot from the disk
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (WorldContext = "WorldContext") )
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (WorldContext = "WorldContext") )
 	[[nodiscard]] static bool DeleteSaveGameInSlot( const UObject *WorldContext, const FString &SlotName, int32 UserIndex );
 	
 	// Determine if a specific save slot name is in use
-	UFUNCTION( BlueprintCallable, Category = "Save Games" )
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games" )
 	[[nodiscard]] static bool DoesSaveGameExist( const FString &SlotName, int32 UserIndex );
 
 	// Check if the game currently allows manual saves to be created
-	UFUNCTION( BlueprintCallable, BlueprintPure = true, Category = "Save Games", meta = (WorldContext = "WorldContext") )
+	UFUNCTION( BlueprintCallable, BlueprintPure = true, Category = "Uplift Save Games", meta = (WorldContext = "WorldContext") )
 	[[nodiscard]] static bool IsManualSavingAllowed( const UObject *WorldContext );
 
 	// Check if the game currently allows manual saves to be created
@@ -97,18 +116,18 @@ public:
 	static FSaveBlockerHandle AddSaveGameBlocker( const UObject *WorldContext, const TConstStructView< FSaveBlockerBase > &NewBlocker );
 
 	// Explicit call to load headers for the available saves
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (WorldContext = "WorldContext") )
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (WorldContext = "WorldContext") )
 	static void CacheSaveGameHeaders( const UObject *WorldContext, int UserIndex );
 
 	// Save the current state of the game to a file
-	[[nodiscard]] static bool SaveToSlot( const UObject *WorldContext, FString SlotName, int32 UserIndex, ESaveGameType SaveType, FString DisplayNameOverride = { } );
+	[[nodiscard]] static bool SaveToSlot( const UObject *WorldContext, FString SlotName, int32 UserIndex, ESaveGameType SaveType, const FText &DisplayName = { } );
 	// Save the current state of the game to a file asynchronously
-	static void SaveToSlot_Async( const UObject *WorldContext, FString SlotName, int32 UserIndex, ESaveGameType SaveType, FString DisplayNameOverride = { }, const FSaveAsyncCallback &OnCompletion = FSaveAsyncCallback( ) );
+	static void SaveToSlot_Async( const UObject *WorldContext, FString SlotName, int32 UserIndex, ESaveGameType SaveType, const FText &DisplayName = { }, const FSaveAsyncCallback &OnCompletion = FSaveAsyncCallback( ) );
 
 	// Save a pre-existing checkpoint to a file
-	static void SaveCheckpointToSlot( const UObject *WorldContext,const UUpliftCampaignSave *CheckpointData, FString SlotName, int32 UserIndex, ESaveGameType SaveType, FString DisplayNameOverride = { } );
+	static void SaveCheckpointToSlot( const UObject *WorldContext,const UUpliftCampaignSave *CheckpointData, FString SlotName, int32 UserIndex, ESaveGameType SaveType, const FText &DisplayName = { } );
 	// save a pre-existing checkpoint to a file asynchronously
-	static void SaveCheckpointToSlot_Async( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, FString SlotName, int32 UserIndex, ESaveGameType SaveType, FString DisplayNameOverride = { }, const FSaveAsyncCallback &OnCompletion = FSaveAsyncCallback( ) );
+	static void SaveCheckpointToSlot_Async( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, FString SlotName, int32 UserIndex, ESaveGameType SaveType, const FText &DisplayName = { }, const FSaveAsyncCallback &OnCompletion = FSaveAsyncCallback( ) );
 
 	// Load an in-memory save as if it were a save from a slot
 	static void LoadCheckpointSave( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData );
@@ -117,11 +136,6 @@ public:
 	[[nodiscard]] static ESaveDataLoadResult LoadSaveGameFromSlot( const UObject *WorldContext, const FString &SlotName, int32 UserIndex, const UUpliftCampaignSaveHeader *& outHeader, const UUpliftCampaignSave *& outSaveData );
 	// Try to load the data from a slot asynchronously and report back when complete with the save data
 	static void LoadSaveGameFromSlot_Async( const UObject *WorldContext, const FString &SlotName, int32 UserIndex, const FLoadAsyncCallback &OnCompletion );
-
-	// Find the most recent save (that meets an optional filter requirements) and load it 
-	[[nodiscard]] static bool LoadMostRecentSave( const UObject *WorldContext, int32 UserIndex, FString &outSlotName, const UUpliftCampaignSaveHeader *& outHeader, const UUpliftCampaignSave *& outSaveData, const FSaveFilter &Filter = FSaveFilter( ) );
-	// Find the most recent save (that meets an optional filter requirements) and load it asynchronously and report back when complete
-	static void LoadMostRecentSave_Async( const UObject *WorldContext, int32 UserIndex, const FLoadAsyncCallback &OnCompletion, const FSaveFilter &Filter = FSaveFilter( ) );
 
 	// Load just the header information for a slot
 	[[nodiscard]] static ESaveDataLoadResult LoadSlotHeaderOnly( const UObject *WorldContext, const FString &SlotName, int32 UserIndex, const UUpliftCampaignSaveHeader *& outHeader );
@@ -138,16 +152,6 @@ public:
 	// Get the headers for all the saves that exist on disk (that meet an optional filter requirement), calling the callback when process asynchronously completes
 	static void EnumerateSaveHeaders_Async( const UObject *WorldContext, int32 UserIndex, const FEnumerateHeadersComplete &OnCompletion, const FSaveFilter &Filter = FSaveFilter( ), const FLoadHeaderAsyncCallback &OnSingleHeader = { } );
 
-	// Get the slot/header for the most recent save (that meets on optional filter requirement)
-	[[nodiscard]] static FEnumeratedSaveGameHeader FindMostRecentSave( const UObject *WorldContext, int32 UserIndex, const FSaveFilter &Filter = FSaveFilter( ) );
-	// Get the slot/header for the most recent save (that meets on optional filter requirement), calling the callback when process asynchronously completes
-	static void FindMostRecentSave_Async( const UObject *WorldContext, int32 UserIndex, const FLoadHeaderAsyncCallback &OnCompletion, const FSaveFilter &Filter = FSaveFilter( ) );
-
-	// Get the slot/header for the least recent save (that meets on optional filter requirement)
-	[[nodiscard]] static FEnumeratedSaveGameHeader FindLeastRecentSave( const UObject *WorldContext, int32 UserIndex, const FSaveFilter &Filter = FSaveFilter( ) );
-	// Get the slot/header for the least recent save (that meets on optional filter requirement), calling the callback when process asynchronously completes
-	static void FindLeastRecentSave_Async( const UObject *WorldContext, int32 UserIndex, const FLoadHeaderAsyncCallback &OnCompletion, const FSaveFilter &Filter = FSaveFilter( ) );
-
 	// Create an in memory save that represents the state of the game that should be transferred to the next gameplay level
 	[[nodiscard]] static const UUpliftCampaignSave* CreateTravelSave( const UObject *WorldContext, const TSoftObjectPtr< const UWorld > &Destination );
 	
@@ -157,9 +161,9 @@ public:
 	static void CreateCheckpointSave_Async( const UObject *WorldContext, const FCreateCheckpointComplete &OnCompletion );
 
 	// Create and write an automatic save to a file - either to an open numbered slot or to the slot that's been around longest
-	static bool AutoSave( const UObject *WorldContext, int32 UserIndex, const FString &DisplayNameOverride = { } );
+	static bool AutoSave( const UObject *WorldContext, FString SlotName, int32 UserIndex, const FText &DisplayName = { } );
 	// Create and write an automatic save to a file asynchronously - either to an open numbered slot or to the slot that's been around longest
-	static void AutoSave_Async( const UObject *WorldContext, int32 UserIndex, const FString &DisplayNameOverride = { }, const FSaveAsyncCallback &OnCompletion = FSaveAsyncCallback( ) );
+	static void AutoSave_Async( const UObject *WorldContext, FString SlotName, int32 UserIndex, const FText &DisplayName = { }, const FSaveAsyncCallback &OnCompletion = FSaveAsyncCallback( ) );
 
 	// Create and write a save to a file - always to slot 'QuickSave' - always user triggered
 	static bool QuickSave( const UObject *WorldContext, int32 UserIndex );
@@ -168,17 +172,17 @@ public:
 	
 	// Save the current state of the game to a file
 	// Files starting with "/" will be assumed to be coming from ProjectContent, otherwise specify a fully qualified path
-	[[nodiscard]] static bool SaveToPath( const UObject *WorldContext, const FString &PathName, ESaveGameType SaveType, FString DisplayNameOverride = { } );
+	[[nodiscard]] static bool SaveToPath( const UObject *WorldContext, const FString &PathName, ESaveGameType SaveType, const FText &DisplayName );
 	// Save the current state of the game to a file asynchronously
 	// Files starting with "/" will be assumed to be coming from ProjectContent, otherwise specify a fully qualified path
-	static void SaveToPath_Async( const UObject *WorldContext, const FString &PathName, ESaveGameType SaveType, FString DisplayNameOverride = { }, const FSaveAsyncCallback &OnCompletion = FSaveAsyncCallback( ) );
+	static void SaveToPath_Async( const UObject *WorldContext, const FString &PathName, ESaveGameType SaveType, const FText &DisplayName, const FSaveAsyncCallback &OnCompletion = FSaveAsyncCallback( ) );
 
 	// Save a pre-existing checkpoint to a file
 	// Files starting with "/" will be assumed to be coming from ProjectContent, otherwise specify a fully qualified path
-	static void SaveCheckpointToPath( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, const FString &PathName, ESaveGameType SaveType, FString DisplayNameOverride = { } );
+	static void SaveCheckpointToPath( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, const FString &PathName, ESaveGameType SaveType );
 	// save a pre-existing checkpoint to a file asynchronously
 	// Files starting with "/" will be assumed to be coming from ProjectContent, otherwise specify a fully qualified path
-	static void SaveCheckpointToPath_Async( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, const FString &PathName, ESaveGameType SaveType, FString DisplayNameOverride = { }, const FSaveAsyncCallback &OnCompletion = FSaveAsyncCallback( ) );
+	static void SaveCheckpointToPath_Async( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, const FString &PathName, ESaveGameType SaveType, const FSaveAsyncCallback &OnCompletion = FSaveAsyncCallback( ) );
 
 	// Try to load the data from a slot into the save game data structure
 	// Files starting with "/" will be assumed to be coming from ProjectContent, otherwise specify a fully qualified path
@@ -196,23 +200,18 @@ public:
 
 #if !UE_BUILD_SHIPPING && !UE_BUILD_TEST
 	// A development only automatic save created with the current state of the game and written to disk
-	static bool DeveloperSave( const UObject *WorldContext, const FString &SlotName, int32 UserIndex, FString DisplayNameOverride = { } );
+	static bool DeveloperSave( const UObject *WorldContext, const FString &SlotName, int32 UserIndex, const FText &DisplayName );
 	// A development only automatic save created with the current state of the game and written to disk asynchronously
-	static void DeveloperSave_Async( const UObject *WorldContext, const FString &SlotName, int32 UserIndex, FString DisplayNameOverride = { }, const FSaveAsyncCallback &OnCompletion = FSaveAsyncCallback( ) );
+	static void DeveloperSave_Async( const UObject *WorldContext, const FString &SlotName, int32 UserIndex, const FText &DisplayName, const FSaveAsyncCallback &OnCompletion = FSaveAsyncCallback( ) );
 #endif
 
 protected:
 	// Add a new reason that save game creation should be prevented
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (WorldContext = "WorldContext") )
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (WorldContext = "WorldContext") )
 	static FSaveBlockerHandle AddSaveGameBlocker( const UObject *WorldContext, const TInstancedStruct< FSaveBlockerBase > &NewBlocker );
 
-	// Determine the best name for an auto save, either an unused slot name or the oldest save with the AutoSave type
-	[[nodiscard]] static FString FindBestAutoSaveSlotName( const UObject *WorldContext, int32 UserIndex );
-	// Determine the best name for an auto save asynchronously, either an unused slot name or the oldest save with the AutoSave type
-	static void FindBestAutoSaveSlotName_Async( const UObject *WorldContext, int32 UserIndex, const FSaveAsyncCallback &OnCompletion );
-	
 	// Create the save game object and fill all the data requiring immediate synchronous data
-	[[nodiscard]] static UUpliftCampaignSave* CreateSaveData( const UObject *WorldContext, bool bIsTravelSave = false );
+	[[nodiscard]] static UUpliftCampaignSave* CreateSaveData( const UObject *WorldContext, const FText &DisplayName, ESaveGameType SaveType );
 	// Fill the save with the data that can be populated asynchronously
 	[[nodiscard]] static bool FillAsyncSaveGameData( UUpliftCampaignSave *SaveGame );
 	// Fill a save with save data asynchronously
@@ -222,8 +221,8 @@ protected:
 	// Fill a checkpoint with data that would not have been available at the time that it was created but should be included when saved to disk
 	static void FillCheckpointData_Async( const UObject *WorldContext, UUpliftCampaignSave *SaveGame, const FCreateCheckpointComplete &OnCompletion );
 	// Create the data that should be saved for the current state of the game
-	[[nodiscard]] static UUpliftCampaignSave* CreateAndFillSaveData( const UObject *WorldContext, bool IncludeCheckpointData, bool bTravelSave );
+	[[nodiscard]] static UUpliftCampaignSave* CreateAndFillSaveData( const UObject *WorldContext, const FText &DisplayName, bool IncludeCheckpointData, ESaveGameType SaveType );
 
 	// Create the header data for the save that is meta-data about the game (mostly for UI purposes)
-	[[nodiscard]] static UUpliftCampaignSaveHeader* CreateSaveGameHeader( const UUpliftCampaignSave *SaveGame, ESaveGameType SaveType, const FString &DisplayName );
+	[[nodiscard]] static UUpliftCampaignSaveHeader* CreateSaveGameHeader( const UUpliftCampaignSave *SaveGame, const FString &SlotName, ESaveGameType SaveType, const FString &DisplayName );
 };

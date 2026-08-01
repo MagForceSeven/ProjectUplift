@@ -7,7 +7,9 @@
 
 #include "UpliftCampaignSaveSubsystem.generated.h"
 
+class UUpliftCampaignSaveHeader;
 class UUpliftCampaignSave;
+class UCampaignSavesViewModel;
 
 UENUM( )
 enum class EExecGameLoading : uint8
@@ -36,6 +38,16 @@ public:
 	UPROPERTY( BlueprintAssignable )
 	FSaveGameAccessEnded OnSaveAccessEnded;
 
+	// Blueprint accessible hook for save game creation
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams( FSaveGameCreated, int32, UserIndex, const FString&, SlotName, const UUpliftCampaignSaveHeader*, Header );
+	UPROPERTY( BlueprintAssignable )
+	FSaveGameCreated OnSaveGameCreated;
+
+	// Blueprint accessible hook for save game deletion
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams( FSaveGameDeleted, int32, UserIndex, const FString&, SlotName );
+	UPROPERTY( BlueprintAssignable )
+	FSaveGameDeleted OnSaveGameDeleted;
+
 	// Accessor to the type of save game loading that happened
 	[[nodiscard]] static EExecGameLoading GetSaveGameLoadingType( const UObject *WorldContext );
 
@@ -59,6 +71,9 @@ public:
 	UPROPERTY( VisibleInstanceOnly )
 	bool bSaveWasLevelTransition = false;
 
+	// Accessor to the view model that lists all the saves
+	UCampaignSavesViewModel* GetViewModel( void ) { return ViewModel; }
+
 	// Subsystem API
 	void Initialize( FSubsystemCollectionBase& Collection ) override;
 	void Deinitialize( ) override;
@@ -67,9 +82,11 @@ protected:
 	// Hooks for the save utility async notifications
 	void SaveGameAccessStarted( void );
 	void SaveGameAccessEnded( void );
+	void SaveGameCreated( int32 UserIndex, const FString &SlotName, const UUpliftCampaignSaveHeader *Header );
+	void SaveGameDeleted( int32 UserIndex, const FString &SlotName );
 
 	// Branch the execution on the type of data that is available
-	UFUNCTION( BlueprintCallable, meta = (WorldContext = "WorldContext", ExpandEnumAsExecs = "Exec") )
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Game", meta = (WorldContext = "WorldContext", ExpandEnumAsExecs = "Exec") )
 	static void SwitchOnGameLoadingType( const UObject* WorldContext, EExecGameLoading& Exec );
 
 	// Handle the transition from one world to the next
@@ -79,6 +96,10 @@ protected:
 	// Handle the start of gameplay in worlds
 	UFUNCTION( )
 	void HandleWorldBeginPlay( bool bBeginPlay );
+
+	// The view model for all the known campaign save games
+	UPROPERTY( VisibleInstanceOnly )
+	TObjectPtr< UCampaignSavesViewModel > ViewModel;
 };
 
 // Configuration settings for project specific save data settings

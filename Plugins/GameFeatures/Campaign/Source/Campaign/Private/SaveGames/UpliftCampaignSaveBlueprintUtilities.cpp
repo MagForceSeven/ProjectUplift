@@ -4,6 +4,8 @@
 
 #include "SaveGames/UpliftCampaignSaveUtilities.h"
 
+#include "DataStoreActors/Campaign.h"
+
 #include UE_INLINE_GENERATED_CPP_BY_NAME(UpliftCampaignSaveBlueprintUtilities)
 
 UEnumerateSaveGameHeaders_AsyncAction* UEnumerateSaveGameHeaders_AsyncAction::EnumerateSaveGameHeaders( int UserIndex, const FSaveGameFilter &SaveFilter, UObject *WorldContext )
@@ -105,53 +107,50 @@ void ULoadSaveGame_AsyncAction::AsyncLoadComplete( const FString &AsyncSlotName,
 	EndAction( );
 }
 
-USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveGameToSlot( const FString &SlotName, int UserIndex, const FString &DisplayNameOverride, UObject *WorldContext )
+USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveGameToSlot( const FString &SlotName, int UserIndex, FText DisplayName, UObject *WorldContext )
 {
-	return SaveGameToSlot_Internal( SlotName, UserIndex, ESaveGameType::User, DisplayNameOverride, WorldContext );
+	return SaveGameToSlot_Internal( SlotName, UserIndex, ESaveGameType::User, DisplayName, WorldContext );
 }
 
-USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveAutoSave( int UserIndex, const FString &DisplayNameOverride, UObject *WorldContext )
+USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveAutoSave( FString SlotName, int UserIndex, FText DisplayName, UObject *WorldContext )
 {
-	return SaveGameToSlot_Internal( FString( ), UserIndex, ESaveGameType::Auto, DisplayNameOverride, WorldContext );
+	return SaveGameToSlot_Internal( SlotName, UserIndex, ESaveGameType::Auto, DisplayName, WorldContext );
 }
 
-extern FString GetQuickSaveSlotName( void );
-extern FString GetQuickSaveDisplayName( void );
+extern FString GetQuickSaveSlotName( const FGuid &CampaignID );
 USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveQuickSave( int UserIndex, UObject *WorldContext )
 {
-	return SaveGameToSlot_Internal( GetQuickSaveSlotName( ), UserIndex, ESaveGameType::Quick, GetQuickSaveDisplayName( ), WorldContext );
+	const auto CampaignID = ADS_Campaign::GetCampaignID( WorldContext );
+	return SaveGameToSlot_Internal( GetQuickSaveSlotName( CampaignID ), UserIndex, ESaveGameType::Quick, { }, WorldContext );
 }
 
 extern const FString DevSavePrefix;
-USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveDeveloperSave( const FString &SlotName, int UserIndex, FString DisplayNameOverride, UObject *WorldContext )
+USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveDeveloperSave( const FString &SlotName, int UserIndex, FText DisplayName, UObject *WorldContext )
 {
-	if (DisplayNameOverride.IsEmpty( ))
-		DisplayNameOverride = SlotName.Replace( TEXT( "_" ), TEXT( " " ) );
-	
-	return SaveGameToSlot_Internal( DevSavePrefix + SlotName, UserIndex, ESaveGameType::Developer, DisplayNameOverride, WorldContext );
+	return SaveGameToSlot_Internal( DevSavePrefix + SlotName, UserIndex, ESaveGameType::Developer, DisplayName, WorldContext );
 }
 
-USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveCheckpointToSlot( const UUpliftCampaignSave *const& Checkpoint, const FString &SlotName, int UserIndex, ESaveGameType SaveType, FString DisplayNameOverride, UObject *WorldContext )
+USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveCheckpointToSlot( const UUpliftCampaignSave *const& Checkpoint, const FString &SlotName, int UserIndex, ESaveGameType SaveType, UObject *WorldContext )
 {
-	const auto Action = SaveGameToSlot_Internal( SlotName, UserIndex, SaveType, DisplayNameOverride, WorldContext );
+	const auto Action = SaveGameToSlot_Internal( SlotName, UserIndex, SaveType, { }, WorldContext );
 	Action->Checkpoint = Checkpoint;
 
 	return Action;
 }
 
-USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveGameToFile( const FString &PathName, const FString &DisplayNameOverride, UObject *WorldContext )
+USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveGameToFile( const FString &PathName, FText DisplayName, UObject *WorldContext )
 {
 	const auto Action = NewObject< USaveSaveGame_AsyncAction >( WorldContext );
 
 	Action->SlotName = PathName;
 	Action->UserIndex = -1;
 	Action->SaveType = ESaveGameType::Developer;
-	Action->DisplayNameOverride = DisplayNameOverride;
+	Action->DisplayName = DisplayName;
 
 	return Action;
 }
 
-USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveGameToSlot_Internal( const FString &SlotName, int UserIndex, ESaveGameType SaveType, const FString &DisplayNameOverride, UObject *WorldContext )
+USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveGameToSlot_Internal( const FString &SlotName, int UserIndex, ESaveGameType SaveType, const FText &DisplayName, UObject *WorldContext )
 {
 	const auto Action = NewObject< USaveSaveGame_AsyncAction >( WorldContext );
 	ensureAlways( UserIndex >= 0 );
@@ -159,7 +158,7 @@ USaveSaveGame_AsyncAction* USaveSaveGame_AsyncAction::SaveGameToSlot_Internal( c
 	Action->SlotName = SlotName;
 	Action->UserIndex = UserIndex;
 	Action->SaveType = SaveType;
-	Action->DisplayNameOverride = DisplayNameOverride;
+	Action->DisplayName = DisplayName;
 
 	return Action;
 }
@@ -169,13 +168,13 @@ void USaveSaveGame_AsyncAction::Activate( void )
 	const auto CompletionDelegate = FSaveAsyncCallback::CreateUObject( this, &USaveSaveGame_AsyncAction::AsyncSaveComplete );
 	
 	if (UserIndex < 0)
-		UUpliftCampaignSaveUtilities::SaveToPath_Async( this, SlotName, SaveType, DisplayNameOverride, CompletionDelegate );
+		UUpliftCampaignSaveUtilities::SaveToPath_Async( this, SlotName, SaveType, DisplayName, CompletionDelegate );
 	else if (SaveType == ESaveGameType::Auto) // specialized call for the auto-save slot to include finding slot name asynchronously
-		UUpliftCampaignSaveUtilities::AutoSave_Async( this, UserIndex, DisplayNameOverride, CompletionDelegate );
+		UUpliftCampaignSaveUtilities::AutoSave_Async( this, SlotName, UserIndex, DisplayName, CompletionDelegate );
 	else if (Checkpoint != nullptr) // specialized call for the save with an existing save data
-		UUpliftCampaignSaveUtilities::SaveCheckpointToSlot_Async( this, Checkpoint, SlotName, UserIndex, SaveType, DisplayNameOverride, CompletionDelegate );
+		UUpliftCampaignSaveUtilities::SaveCheckpointToSlot_Async( this, Checkpoint, SlotName, UserIndex, SaveType, DisplayName, CompletionDelegate );
 	else // default save case where all the params can be forwarded directly to a generic save call
-		UUpliftCampaignSaveUtilities::SaveToSlot_Async( this, SlotName, UserIndex, SaveType, DisplayNameOverride, CompletionDelegate );
+		UUpliftCampaignSaveUtilities::SaveToSlot_Async( this, SlotName, UserIndex, SaveType, DisplayName, CompletionDelegate );
 
 	StartAction( this, false );
 }

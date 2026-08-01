@@ -4,6 +4,7 @@
 
 #include "SaveGames/UpliftCampaignSaveGame.h"
 #include "SaveGames/UpliftCampaignSaveUtilities.h"
+#include "SaveGames/CampaignSavesViewModel.h"
 
 #include "GameWorld/UpliftWorldSettings.h"
 #include "Strategy/StrategyGameMode.h"
@@ -27,9 +28,10 @@ EExecGameLoading UUpliftCampaignSaveSubsystem::GetSaveGameLoadingType( const UOb
 		if (Subsystem->bSaveWasLevelTransition)
 			return EExecGameLoading::LevelTransition;
 	}
-
-	if (Subsystem->SaveGame->bTravelSave)
+	else if (Subsystem->SaveGame->SaveType == ESaveGameType::Travel)
+	{
 		return EExecGameLoading::LevelTransition;
+	}
 
 	return EExecGameLoading::SaveGame;
 }
@@ -40,16 +42,26 @@ void UUpliftCampaignSaveSubsystem::Initialize( FSubsystemCollectionBase &Collect
 
 	USaveDataUtilities::OnSaveDataAccessStarted.AddUObject( this, &UUpliftCampaignSaveSubsystem::SaveGameAccessStarted );
 	USaveDataUtilities::OnSaveDataAccessEnded.AddUObject( this, &UUpliftCampaignSaveSubsystem::SaveGameAccessEnded );
+	UUpliftCampaignSaveUtilities::OnSaveGameCreated.AddUObject( this, &UUpliftCampaignSaveSubsystem::SaveGameCreated );
+	UUpliftCampaignSaveUtilities::OnSaveGameDeleted.AddUObject( this, &UUpliftCampaignSaveSubsystem::SaveGameDeleted );
 
 	FWorldDelegates::OnGameInstanceWorldChanged.AddUObject( this, &UUpliftCampaignSaveSubsystem::HandleNewWorld );
 
 	HandleNewWorld( nullptr, nullptr, GetWorld( ) );
+
+	// wait until the world is initialized so that async save actions can be used
+	GetWorld( )->OnWorldBeginPlay.AddWeakLambda( this, [ this ]( ) -> void
+	{
+		ViewModel = NewObject< UCampaignSavesViewModel >( this );
+	} );
 }
 
 void UUpliftCampaignSaveSubsystem::Deinitialize( )
 {
 	USaveDataUtilities::OnSaveDataAccessStarted.RemoveAll( this );
 	USaveDataUtilities::OnSaveDataAccessEnded.RemoveAll( this );
+	UUpliftCampaignSaveUtilities::OnSaveGameCreated.RemoveAll( this );
+	UUpliftCampaignSaveUtilities::OnSaveGameDeleted.RemoveAll( this );
 
 	FWorldDelegates::OnStartGameInstance.RemoveAll( this );
 
@@ -64,6 +76,16 @@ void UUpliftCampaignSaveSubsystem::SaveGameAccessStarted( )
 void UUpliftCampaignSaveSubsystem::SaveGameAccessEnded( )
 {
 	OnSaveAccessEnded.Broadcast( );
+}
+
+void UUpliftCampaignSaveSubsystem::SaveGameCreated( int32 UserIndex, const FString &SlotName, const UUpliftCampaignSaveHeader *Header )
+{
+	OnSaveGameCreated.Broadcast( UserIndex, SlotName, Header );
+}
+
+void UUpliftCampaignSaveSubsystem::SaveGameDeleted( int32 UserIndex, const FString &SlotName )
+{
+	OnSaveGameDeleted.Broadcast( UserIndex, SlotName );
 }
 
 void UUpliftCampaignSaveSubsystem::SwitchOnGameLoadingType( const UObject *WorldContext, EExecGameLoading &Exec )

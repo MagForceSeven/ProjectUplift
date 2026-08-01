@@ -13,6 +13,7 @@
 #include "Settings/CampaignPIESettings.h"
 
 #include "SaveGames/UpliftCampaignSaveSubsystem.h"
+#include "SaveGames/UpliftCampaignSaveUtilities.h"
 
 #include "PersistentDataStore.h"
 #include "DataStoreActors/BattleData.h"
@@ -82,6 +83,11 @@ void AStrategyGameMode::GameModeReady( )
 	}
 
 	UStarfireMessenger::GetSubsystem( this )->Broadcast< FMessage_StrategyModeReady >( );
+
+	if (UUpliftCampaignSaveSubsystem::GetSaveGameLoadingType( this ) != EExecGameLoading::SaveGame)
+	{
+		UUpliftCampaignSaveUtilities::AutoSave_Async( this, "StrategyStart", 0 );
+	}
 }
 
 void AStrategyGameMode::InitializeForQuickPlay( )

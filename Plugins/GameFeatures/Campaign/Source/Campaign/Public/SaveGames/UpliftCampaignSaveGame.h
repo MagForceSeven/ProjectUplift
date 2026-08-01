@@ -4,8 +4,11 @@
 
 #include "SaveData/SaveData.h"
 
+#include "GameplayTagContainer.h"
+
 #include "UpliftCampaignSaveGame.generated.h"
 
+enum class ESaveGameType : uint8;
 struct FStreamableHandle;
 
 // Game specific save game information
@@ -20,15 +23,26 @@ public:
 	// Apply this save game to the game data
 	bool ApplySaveData( const UObject *WorldContext ) const;
 
-	// Is this a save we made before traveling into a new level? If this is false,
-	// we assume this save was made in the middle of gameplay.
+	// The type of save game this is
 	UPROPERTY( VisibleInstanceOnly )
-	bool bTravelSave = false;
+	ESaveGameType SaveType;
 
 	// The world that should be loaded into
 	// This is either where we were to make the save, or set by the game setup screen
 	UPROPERTY( VisibleInstanceOnly )
 	TSoftObjectPtr< const UWorld > WorldToLoad;
+
+	// The type of world the player was in when they made the save
+	UPROPERTY( VisibleAnywhere, BlueprintReadOnly, Category = "Save Game" )
+	FGameplayTag WorldType;
+
+	// The user facing display name
+	UPROPERTY( VisibleAnywhere, BlueprintReadOnly, Category = "Save Game" )
+	FText UserDisplayName;
+
+	// The user facing display name was auto-generated
+	UPROPERTY( VisibleAnywhere, BlueprintReadOnly, Category = "Save Game" )
+	bool bAutomatedDisplayName = false;
 
 	// Mode specific descriptor for UI display
 	UPROPERTY( VisibleAnywhere, BlueprintReadOnly, Category = "Save Data" )
@@ -56,7 +70,7 @@ public:
 
 	// Un-serialized flag tracking the (potentially async) completion
 	bool bCreationComplete = false;
-	
+
 	// Start loading the assets required for the contents of this save
 	TSharedPtr< FStreamableHandle > LoadAssets( void ) const;
 };

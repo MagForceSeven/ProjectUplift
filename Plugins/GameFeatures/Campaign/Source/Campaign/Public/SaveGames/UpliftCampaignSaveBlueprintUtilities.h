@@ -22,7 +22,7 @@ public:
 	FCompletionDelegate OnComplete;
 
 	// Get all the headers for the save games that are currently available
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (AutoCreateRefTerm = "SaveFilter", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (AutoCreateRefTerm = "SaveFilter", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
 	static UEnumerateSaveGameHeaders_AsyncAction* EnumerateSaveGameHeaders( int UserIndex, const FSaveGameFilter &SaveFilter, UObject *WorldContext );
 
 	// Core Blueprint Async Action API
@@ -56,7 +56,7 @@ public:
 	FCompletionDelegate OnComplete;
 
 	// Get all the headers for the save games that are currently available
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (AutoCreateRefTerm = "SaveFilter", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (AutoCreateRefTerm = "SaveFilter", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
 	static UForEachSaveGameHeaders_AsyncAction* ForEachSaveHeader( int UserIndex, UObject *WorldContext );
 
 	// Core Blueprint Async Action API
@@ -81,12 +81,12 @@ public:
 	FCompletionDelegate OnComplete;
 
 	// Load a specific save game and transition to the map associated with it
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
 	static ULoadSaveGame_AsyncAction* LoadSaveGame( const FString &SlotName, int UserIndex, UObject *WorldContext );
 
 	// Load a specific save game and transition to the map associated with it
 	// Files starting with "/" will be assumed to be coming from ProjectContent, otherwise specify a fully qualified path
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
 	static ULoadSaveGame_AsyncAction* LoadSaveGameFromFile( const FString &PathName, UObject *WorldContext );
 
 	// Core Blueprint Async Action API
@@ -124,36 +124,36 @@ public:
 	FCompletionDelegate OnFailure;
 
 	// Save a game to a specific slot, overwriting whatever may already be there
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (AdvancedDisplay = "DisplayNameOverride", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
-	static USaveSaveGame_AsyncAction* SaveGameToSlot( const FString &SlotName, int UserIndex, const FString &DisplayNameOverride, UObject *WorldContext );
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (AdvancedDisplay = "DisplayNameOverride", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
+	static USaveSaveGame_AsyncAction* SaveGameToSlot( const FString &SlotName, int UserIndex, FText DisplayName, UObject *WorldContext );
 
 	// Create an automated save game that is written to an available or old autosave slot
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (AdvancedDisplay = "DisplayNameOverride", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
-	static USaveSaveGame_AsyncAction* SaveAutoSave( int UserIndex, const FString &DisplayNameOverride, UObject *WorldContext );
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (AdvancedDisplay = "DisplayNameOverride", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
+	static USaveSaveGame_AsyncAction* SaveAutoSave( FString SlotName, int UserIndex, FText DisplayName, UObject *WorldContext );
 
 	// Write a save to the quick save slot
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
 	static USaveSaveGame_AsyncAction* SaveQuickSave( int UserIndex, UObject *WorldContext );
 
 	// Write a save that will only be written out in development builds
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (AdvancedDisplay = "DisplayNameOverride", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
-	static USaveSaveGame_AsyncAction* SaveDeveloperSave( const FString &SlotName, int UserIndex, FString DisplayNameOverride, UObject *WorldContext );
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (AdvancedDisplay = "DisplayNameOverride", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
+	static USaveSaveGame_AsyncAction* SaveDeveloperSave( const FString &SlotName, int UserIndex, FText DisplayName, UObject *WorldContext );
 
 	// Write a save where the save data is already available
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (AdvancedDisplay = "DisplayNameOverride, SaveType", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
-	static USaveSaveGame_AsyncAction* SaveCheckpointToSlot( const UUpliftCampaignSave *const& Checkpoint, const FString &SlotName, int UserIndex, ESaveGameType SaveType, FString DisplayNameOverride, UObject *WorldContext );
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (AdvancedDisplay = "DisplayNameOverride, SaveType", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
+	static USaveSaveGame_AsyncAction* SaveCheckpointToSlot( const UUpliftCampaignSave *const& Checkpoint, const FString &SlotName, int UserIndex, ESaveGameType SaveType, UObject *WorldContext );
 
 	// Save a game to a specific file, overwriting whatever may already be there
 	// Files starting with "/" will be assumed to be coming from ProjectContent, otherwise specify a fully qualified path
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (AdvancedDisplay = "DisplayNameOverride", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
-	static USaveSaveGame_AsyncAction* SaveGameToFile( const FString &PathName, const FString &DisplayNameOverride, UObject *WorldContext );
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (AdvancedDisplay = "DisplayNameOverride", WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
+	static USaveSaveGame_AsyncAction* SaveGameToFile( const FString &PathName, FText DisplayName, UObject *WorldContext );
 	
 	// Core Blueprint Async Action API
 	void Activate( void ) override;
 
 private:
 	// Utility function shared by all the blueprint callable flavors of types of saving
-	static USaveSaveGame_AsyncAction* SaveGameToSlot_Internal( const FString &SlotName, int UserIndex, ESaveGameType SaveType, const FString &DisplayNameOverride, UObject *WorldContext );
+	static USaveSaveGame_AsyncAction* SaveGameToSlot_Internal( const FString &SlotName, int UserIndex, ESaveGameType SaveType, const FText &DisplayName, UObject *WorldContext );
 	
 	// The name of the save that should be saved to
 	FString SlotName;
@@ -165,7 +165,7 @@ private:
 	ESaveGameType SaveType;
 
 	// An alternate name to display in the UI
-	FString DisplayNameOverride;
+	FText DisplayName;
 
 	// Optional pre-existing save data that should be saved out instead of creating one based on the current state of the game
 	UPROPERTY( )
@@ -189,7 +189,7 @@ public:
 	FCompletionDelegate OnComplete;
 
 	// Create a checkpoint, an in-memory save of the current state of the game, that could be saved or re-loaded at some later date
-	UFUNCTION( BlueprintCallable, Category = "Save Games", meta = (WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
+	UFUNCTION( BlueprintCallable, Category = "Uplift Save Games", meta = (WorldContext = "WorldContext", BlueprintInternalUseOnly = true) )
 	static UCreateCheckpointSave_AsyncAction* CreateCheckpoint( UObject *WorldContext );
 
 	// Core Blueprint Async Action API

@@ -8,6 +8,8 @@
 
 #include "SaveData/SaveBlockerBase.h"
 
+#include "DataStoreActors/Campaign.h"
+
 #include "GameFeatures/FeatureContentManager.h"
 
 // Engine
@@ -17,6 +19,9 @@
 #include "UObject/GarbageCollection.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(UpliftCampaignSaveUtilities)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// General File Utilities
 
 static const FString AutoSavePrefix = "AutoSave_";
 extern const FString DevSavePrefix = "Dev_"; // extern'd to GameSaveGameBlueprintUtilities
@@ -29,45 +34,61 @@ static TAutoConsoleVariable< bool > CVar_AllowDeveloperSaves( TEXT( "Uplift.Save
 	#endif
 	TEXT( "Whether or not developer save request should be honored" ), ECVF_Cheat );
 
-static TAutoConsoleVariable< int > CVar_MaxAutoSaveSlots( TEXT( "Uplift.SaveGame.MaxAutoSaveSlots" ), 5, TEXT( "The maximum number of unique auto-saves allowed at one time" ), ECVF_Cheat );
 static TAutoConsoleVariable< FString > CVar_QuickSaveSlotName( TEXT( "Uplift.SaveGames.QuickSaveSlotName" ), "QuickSave", TEXT( "The name of the slot to use for savegames" ), ECVF_Cheat );
 
-FString GetQuickSaveSlotName( void ) { return CVar_QuickSaveSlotName.GetValueOnAnyThread( ); }
-FString GetQuickSaveDisplayName( void ) { return NSLOCTEXT( "Uplift_SaveGames", "QuickSaveFriendlyName", "Quick Save" ).ToString( ); }
+FString GetQuickSaveSlotName( const FGuid &CampaignID ) { return CVar_QuickSaveSlotName.GetValueOnAnyThread( ) + "_" + CampaignID.ToString( ); }
 
-void UpdateSlotName( FString& SlotName, ESaveGameType SaveType )
+void UpdateSlotName( const UObject *WorldContext, FString& SlotName, ESaveGameType SaveType, const FGuid &CampaignID )
 {
 	switch (SaveType)
 	{
-		case ESaveGameType::Auto: SlotName = AutoSavePrefix + SlotName;
+		case ESaveGameType::Auto:
+			ensureAlways( !SlotName.IsEmpty( ) );
+			SlotName = AutoSavePrefix + SlotName + "_" + CampaignID.ToString( );
 			break;
-		case ESaveGameType::Developer: SlotName = DevSavePrefix + SlotName;
+
+		case ESaveGameType::Developer:
+			ensureAlways( !SlotName.IsEmpty( ) );
+			SlotName = DevSavePrefix + SlotName + "_" + CampaignID.ToString( );
 			break;
+			
+		case ESaveGameType::User:
+			if (SlotName.IsEmpty( ))
+			{
+				const auto TimeStamp = FDateTime::Now( );
+				const auto World = GEngine->GetWorldFromContextObjectChecked( WorldContext );
+				SlotName = World->GetName( ) + "_" + TimeStamp.ToString( );
+			}
 
 		default: // other types don't modify the slot name
 			break;
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Enumerated Save Game Header Structure
+
 FEnumeratedSaveGameHeader::FEnumeratedSaveGameHeader( const USaveDataUtilities::FEnumeratedHeader_Core &Core ) :
 	SlotName( Core.SlotName ),
 	LoadingResult( Core.LoadingResult ),
 	Header( CastChecked< UUpliftCampaignSaveHeader >( Core.Header, ECastCheckedType::NullAllowed ) )
 {
+	if (Header != nullptr) // if we have a valid header, use the slot name cached there
+	{
+		SlotName = Header->SlotName;
+		ensureAlways( !SlotName.IsEmpty( ) );
+	}
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Blueprint Function Library
+
+FSaveGameCreated UUpliftCampaignSaveUtilities::OnSaveGameCreated;
+FSaveGameDeleted UUpliftCampaignSaveUtilities::OnSaveGameDeleted;
 
 TArray< FString > UUpliftCampaignSaveUtilities::EnumerateSlotNames( int32 UserIndex )
 {
 	return Super::EnumerateSlotNames( UserIndex );
-}
-
-FString UUpliftCampaignSaveUtilities::GetUnusedSlotName( int32 UserIndex, ESaveGameType SaveType )
-{
-	ensureAlways( SaveType != ESaveGameType::User ); // User saves should not have to find an unused slot name
-	
-	static const TArray< FString > Types = { FString( ), FString( ), AutoSavePrefix, DevSavePrefix };
-
-	return Super::GetUnusedSlotName( UserIndex, Types[ (int)SaveType ] );
 }
 
 void UUpliftCampaignSaveUtilities::CacheSaveGameHeaders( const UObject *WorldContext, int UserIndex )
@@ -77,6 +98,8 @@ void UUpliftCampaignSaveUtilities::CacheSaveGameHeaders( const UObject *WorldCon
 
 bool UUpliftCampaignSaveUtilities::DeleteSaveGameInSlot( const UObject *WorldContext, const FString &SlotName, int32 UserIndex )
 {
+	OnSaveGameDeleted.Broadcast( UserIndex, SlotName );
+
 	return Super::DeleteSaveGameInSlot( WorldContext, SlotName, UserIndex, UUpliftCampaignSaveHeader::StaticClass( ) );
 }
 
@@ -110,7 +133,7 @@ FSaveBlockerHandle UUpliftCampaignSaveUtilities::AddSaveGameBlocker( const UObje
 	return Super::AddSaveBlocker( WorldContext, UUpliftCampaignSave::StaticClass( ), NewBlocker );
 }
 
-bool UUpliftCampaignSaveUtilities::SaveToSlot( const UObject *WorldContext, FString SlotName, int32 UserIndex, ESaveGameType SaveType, FString DisplayNameOverride )
+bool UUpliftCampaignSaveUtilities::SaveToSlot( const UObject *WorldContext, FString SlotName, int32 UserIndex, ESaveGameType SaveType, const FText &DisplayName )
 {
 	check( IsInGameThread( ) );
 
@@ -128,23 +151,25 @@ bool UUpliftCampaignSaveUtilities::SaveToSlot( const UObject *WorldContext, FStr
 		return false;
 	}
 	
-	const auto SaveData = CreateAndFillSaveData( WorldContext, true, false );
+	const auto SaveData = CreateAndFillSaveData( WorldContext, DisplayName, true, SaveType );
 	if (!ensureAlways( SaveData != nullptr ))
 		return false;
 
-	if (DisplayNameOverride.IsEmpty( ))
-		DisplayNameOverride = SlotName.Replace( TEXT( "_" ), TEXT( " " ) );
+	UpdateSlotName( WorldContext, SlotName, SaveType, SaveData->CampaignID );
 
-	UpdateSlotName( SlotName, SaveType );
-
-	const auto Header = CreateSaveGameHeader( SaveData, SaveType, DisplayNameOverride );
+	const auto Header = CreateSaveGameHeader( SaveData, SlotName, SaveType, SlotName );
 	if (!ensureAlways( Header != nullptr ))
 		return false;
 
-	return Super::SaveDataToSlot( WorldContext, Header, SaveData, SlotName, UserIndex );
+	const auto Result = Super::SaveDataToSlot( WorldContext, Header, SaveData, SlotName, UserIndex );
+	
+	if (Result)
+		OnSaveGameCreated.Broadcast( UserIndex, SlotName, Header );
+
+	return Result;
 }
 
-void UUpliftCampaignSaveUtilities::SaveToSlot_Async( const UObject *WorldContext, FString SlotName, int32 UserIndex, ESaveGameType SaveType, FString DisplayNameOverride, const FSaveAsyncCallback &OnCompletion )
+void UUpliftCampaignSaveUtilities::SaveToSlot_Async( const UObject *WorldContext, FString SlotName, int32 UserIndex, ESaveGameType SaveType, const FText &DisplayName, const FSaveAsyncCallback &OnCompletion )
 {
 	if (!CVar_AllowDeveloperSaves.GetValueOnAnyThread( ) && (SaveType == ESaveGameType::Developer))
 	{
@@ -164,17 +189,14 @@ void UUpliftCampaignSaveUtilities::SaveToSlot_Async( const UObject *WorldContext
 		return;
 	}
 
-	const auto SaveData = CreateSaveData( WorldContext );
+	const auto SaveData = CreateSaveData( WorldContext, DisplayName, SaveType );
 	if (!ensureAlways( SaveData != nullptr ))
 	{
 		OnCompletion.ExecuteIfBound( SlotName, UserIndex, false );
 		return;
 	}
 
-	if (DisplayNameOverride.IsEmpty( ))
-		DisplayNameOverride = SlotName.Replace( TEXT( "_" ), TEXT( " " ) );
-
-	const auto AsyncFillComplete = FCreateCheckpointComplete::CreateLambda( [ SlotName, UserIndex, SaveType, DisplayNameOverride, OnCompletion ]( const UObject *WorldContext, const UUpliftCampaignSave* CheckpointData, bool Success )
+	const auto AsyncFillComplete = FCreateCheckpointComplete::CreateLambda( [ SlotName, UserIndex, SaveType, OnCompletion ]( const UObject *WorldContext, const UUpliftCampaignSave* CheckpointData, bool Success )
 	{
 		if (!Success)
 		{
@@ -183,22 +205,30 @@ void UUpliftCampaignSaveUtilities::SaveToSlot_Async( const UObject *WorldContext
 		}
 
 		FString FinalSlotName = SlotName;
-		UpdateSlotName( FinalSlotName, SaveType );		
+		UpdateSlotName( WorldContext, FinalSlotName, SaveType, CheckpointData->CampaignID );		
 
-		const UUpliftCampaignSaveHeader* Header = CreateSaveGameHeader( CheckpointData, SaveType, DisplayNameOverride );
+		const UUpliftCampaignSaveHeader* Header = CreateSaveGameHeader( CheckpointData, FinalSlotName, SaveType, SlotName );
 		if (!ensureAlways( Header != nullptr ))
 		{
 			OnCompletion.ExecuteIfBound( SlotName, UserIndex, false );
 			return;
 		}
 
-		SaveDataToSlot_Async( WorldContext, Header, CheckpointData, FinalSlotName, UserIndex, OnCompletion );
+		const auto OnCoreCompletion = FSaveAsyncCallback_Core::CreateLambda( [ OnCompletion, Header ]( const FString &SlotName, int32 UserIndex, bool Success ) -> void
+		{
+			OnCompletion.ExecuteIfBound( SlotName, UserIndex, Success );
+			
+			if (Success)
+				OnSaveGameCreated.Broadcast( UserIndex, SlotName, Header );
+		} );
+
+		Super::SaveDataToSlot_Async( WorldContext, Header, CheckpointData, FinalSlotName, UserIndex, OnCoreCompletion );
 	});
 
 	FillAsyncSaveGameData_Async( WorldContext, SaveData, true, AsyncFillComplete );
 }
 
-void UUpliftCampaignSaveUtilities::SaveCheckpointToSlot( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, FString SlotName, int32 UserIndex, ESaveGameType SaveType, FString DisplayNameOverride )
+void UUpliftCampaignSaveUtilities::SaveCheckpointToSlot( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, FString SlotName, int32 UserIndex, ESaveGameType SaveType, const FText &DisplayName )
 {
 	check( IsInGameThread( ) );
 
@@ -210,27 +240,28 @@ void UUpliftCampaignSaveUtilities::SaveCheckpointToSlot( const UObject *WorldCon
 	if (!ensureAlways( CheckpointData->bCreationComplete == true ))
 		return;
 
-	if (DisplayNameOverride.IsEmpty( ))
-		DisplayNameOverride = SlotName.Replace( TEXT( "_" ), TEXT( " " ) );
-
 	ensureAlways( SaveType != ESaveGameType::Quick ); // this is probably an error as saving a checkpoint is automated, but quick should always be user triggered
-	UpdateSlotName( SlotName, SaveType );
+	UpdateSlotName( WorldContext, SlotName, SaveType, CheckpointData->CampaignID );
 
 	const auto SaveGameData = CastChecked< UUpliftCampaignSave >( StaticDuplicateObject( CheckpointData, GetTransientPackage( ) ) );
+	SaveGameData->SaveType = SaveType;
 
 	if (!ensureAlways( FillCheckpointData( WorldContext, SaveGameData ) ))
 		return;
 	SaveGameData->bCreationComplete = true;
 
-	const auto Header = CreateSaveGameHeader( SaveGameData, SaveType, DisplayNameOverride );
+	const auto Header = CreateSaveGameHeader( SaveGameData, SlotName, SaveType, SlotName );
 	if (!ensureAlways( Header != nullptr ))
 		return;
 
 	const auto SaveDataResult = Super::SaveDataToSlot( WorldContext, Header, SaveGameData, SlotName, UserIndex );
 	ensureAlways( SaveDataResult );
+	
+	if (SaveDataResult)
+		OnSaveGameCreated.Broadcast( UserIndex, SlotName, Header );
 }
 
-void UUpliftCampaignSaveUtilities::SaveCheckpointToSlot_Async( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, FString SlotName, int32 UserIndex, ESaveGameType SaveType, FString DisplayNameOverride, const FSaveAsyncCallback &OnCompletion )
+void UUpliftCampaignSaveUtilities::SaveCheckpointToSlot_Async( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, FString SlotName, int32 UserIndex, ESaveGameType SaveType, const FText &DisplayName, const FSaveAsyncCallback &OnCompletion )
 {
 	if (!CVar_AllowDeveloperSaves.GetValueOnAnyThread( ) && (SaveType == ESaveGameType::Developer))
 	{
@@ -268,15 +299,12 @@ void UUpliftCampaignSaveUtilities::SaveCheckpointToSlot_Async( const UObject *Wo
 		return;
 	}
 
-	if (DisplayNameOverride.IsEmpty( ))
-		DisplayNameOverride = SlotName.Replace( TEXT( "_" ), TEXT( " " ) );
-
 	ensureAlways( SaveType != ESaveGameType::Quick ); // this is probably an error as saving a checkpoint is automated, but quick should always be user triggered
-	UpdateSlotName( SlotName, SaveType );
+	UpdateSlotName( WorldContext, SlotName, SaveType, CheckpointData->CampaignID );
 
 	struct FSaveCheckpointTask : public FSaveDataTask
 	{
-		FSaveCheckpointTask( const FString &SN, int32 UI, ESaveGameType ST, const FString &DN, const UUpliftCampaignSave *CP ) : FSaveDataTask( UI ), SlotName( SN ), DisplayName( DN ), SaveType( ST ), CheckpointData( CP ) { }
+		FSaveCheckpointTask( const FString &SN, int32 UI, ESaveGameType ST, const FText &DN, const UUpliftCampaignSave *CP ) : FSaveDataTask( UI ), SlotName( SN ), DisplayName( DN ), SaveType( ST ), CheckpointData( CP ) { }
 
 		void Branch(const UObject *WorldContext) override
 		{
@@ -291,12 +319,13 @@ void UUpliftCampaignSaveUtilities::SaveCheckpointToSlot_Async( const UObject *Wo
 			SaveGameData = CastChecked< UUpliftCampaignSave >( StaticDuplicateObjectEx(Parameters) );
 			if (SaveGameData == nullptr)
 				return;
+			SaveGameData->SaveType = SaveType;
 
 			if (!FillCheckpointData( Context, SaveGameData ))
 				return;
 			SaveGameData->bCreationComplete = true;
 
-			Header = CreateSaveGameHeader( SaveGameData, SaveType, DisplayName );
+			Header = CreateSaveGameHeader( SaveGameData, SlotName, SaveType, SlotName );
 			if (Header == nullptr)
 				return;
 
@@ -315,7 +344,7 @@ void UUpliftCampaignSaveUtilities::SaveCheckpointToSlot_Async( const UObject *Wo
 		FString SlotName;
 
 		// The display name to assign to the save header
-		FString DisplayName;
+		FText DisplayName;
 
 		// The type of save to write
 		ESaveGameType SaveType;
@@ -335,11 +364,14 @@ void UUpliftCampaignSaveUtilities::SaveCheckpointToSlot_Async( const UObject *Wo
 		// The overall result of the write operation
 		bool bResult = false;
 		
-	} NewTask( SlotName, UserIndex, SaveType, DisplayNameOverride, CheckpointData );
+	} NewTask( SlotName, UserIndex, SaveType, DisplayName, CheckpointData );
 
 	const auto AsyncTaskComplete = FAsyncTaskComplete< FSaveCheckpointTask >::CreateLambda( [ OnCompletion ]( const UObject *WorldContext, const FSaveCheckpointTask &Task )
 	{
 		OnCompletion.ExecuteIfBound( Task.SlotName, Task.UserIndex, Task.bResult );
+		
+		if (Task.bResult)
+			OnSaveGameCreated.Broadcast( Task.UserIndex, Task.SlotName, Task.Header );
 	});
 
 	if (!Super::StartAsyncSaveTask( WorldContext, MoveTemp( NewTask ), "Save Checkpoint to Slot", AsyncTaskComplete ))
@@ -423,44 +455,6 @@ void UUpliftCampaignSaveUtilities::LoadSaveGameFromSlot_Async( const UObject *Wo
 	const auto SaveData = NewObject< UUpliftCampaignSave >( GetTransientPackage( ) );
 
 	Super::LoadDataFromSlot_Async( WorldContext, SlotName, UserIndex, Header, SaveData, FLoadAsyncCallback_Core::CreateLambda( CompletionLambda ) );
-}
-
-bool UUpliftCampaignSaveUtilities::LoadMostRecentSave( const UObject *WorldContext, int32 UserIndex, FString &outSlotName, const UUpliftCampaignSaveHeader *& outHeader, const UUpliftCampaignSave *& outSaveData, const FSaveFilter &Filter )
-{
-	if (!ensureAlways( WorldContext != nullptr ))
-		return false;
-	if (!ensureAlways( UserIndex >= 0 ))
-		return false;
-
-	const auto Results = FindMostRecentSave( WorldContext, UserIndex, Filter );
-	if (Results.LoadingResult != ESaveDataLoadResult::Success)
-		return false;
-
-	outSlotName = Results.SlotName;
-
-	return LoadSaveGameFromSlot( WorldContext, outSlotName, UserIndex, outHeader, outSaveData ) == ESaveDataLoadResult::Success;
-}
-
-void UUpliftCampaignSaveUtilities::LoadMostRecentSave_Async( const UObject *WorldContext, int32 UserIndex, const FLoadAsyncCallback &OnCompletion, const FSaveFilter &Filter )
-{
-	check( OnCompletion.IsBound( ) );
-
-	if (!ensureAlways( UserIndex >= 0 ))
-	{
-		OnCompletion.Execute( FString( ), UserIndex, ESaveDataLoadResult::RequestFailure, nullptr, nullptr );
-		return;
-	}
-
-	const TWeakObjectPtr< const UObject > WeakWorldContext( WorldContext );
-	auto OnFindComplete = [ OnCompletion, WeakWorldContext ]( const FString &SlotName, int32 UserIndex, ESaveDataLoadResult Result, const UUpliftCampaignSaveHeader *Header ) -> void
-	{
-		if (Result != ESaveDataLoadResult::Success)
-			OnCompletion.Execute( SlotName, UserIndex, Result, nullptr, nullptr );
-		else
-			LoadSaveGameFromSlot_Async( WeakWorldContext.Get( ), SlotName, UserIndex, OnCompletion );
-	};
-
-	FindMostRecentSave_Async( WorldContext, UserIndex, FLoadHeaderAsyncCallback::CreateLambda( OnFindComplete ), Filter );
 }
 
 ESaveDataLoadResult UUpliftCampaignSaveUtilities::LoadSlotHeaderOnly( const UObject *WorldContext, const FString &SlotName, int32 UserIndex, const UUpliftCampaignSaveHeader *& outHeader )
@@ -589,95 +583,9 @@ void UUpliftCampaignSaveUtilities::EnumerateSaveHeaders_Async( const UObject *Wo
 	Super::EnumerateSaveHeaders_Async( WorldContext, UserIndex, UUpliftCampaignSaveHeader::StaticClass( ), OnCompletion_Core, FSaveFilter_Core::CreateLambda( FilterLambda ) );
 }
 
-FEnumeratedSaveGameHeader UUpliftCampaignSaveUtilities::FindMostRecentSave( const UObject *WorldContext, int32 UserIndex, const FSaveFilter &Filter )
-{
-	FEnumeratedHeader_Core CoreResult;
-	if (Filter.IsBound( ))
-	{
-		auto FilterLambda = [ Filter ]( const FString &SlotName, int32 UserIndex, const USaveDataHeader *Header, ESaveDataLoadResult LoadingResult ) -> bool
-		{
-			const auto GameHeader = CastChecked< UUpliftCampaignSaveHeader >( Header );
-			return Filter.Execute( SlotName, UserIndex, GameHeader, LoadingResult );
-		};
-
-		CoreResult = Super::FindMostRecentSave( WorldContext, UserIndex, UUpliftCampaignSaveHeader::StaticClass( ), FSaveFilter_Core::CreateLambda( FilterLambda ) );
-	}
-	else
-	{
-		CoreResult = Super::FindMostRecentSave( WorldContext, UserIndex, UUpliftCampaignSaveHeader::StaticClass( ) );
-	}
-
-	return FEnumeratedSaveGameHeader( CoreResult );
-}
-
-void UUpliftCampaignSaveUtilities::FindMostRecentSave_Async( const UObject *WorldContext, int32 UserIndex, const FLoadHeaderAsyncCallback &OnCompletion, const FSaveFilter &Filter )
-{
-	check( OnCompletion.IsBound( ) );
-
-	auto CompletionLambda = [ OnCompletion ]( const FString &SlotName, int32 UserIndex, ESaveDataLoadResult Result, const USaveDataHeader *Header ) -> void
-	{
-		OnCompletion.Execute( SlotName, UserIndex, Result, CastChecked< UUpliftCampaignSaveHeader >( Header, ECastCheckedType::NullAllowed ) );
-	};
-	const auto OnCompletion_Core = Super::FLoadHeaderAsyncCallback_Core::CreateLambda( CompletionLambda );
-
-	if (!Filter.IsBound( ))
-		return Super::FindMostRecentSave_Async( WorldContext, UserIndex, UUpliftCampaignSaveHeader::StaticClass( ), OnCompletion_Core );
-
-	auto FilterLambda = [ Filter ]( const FString &SlotName, int32 UserIndex, const USaveDataHeader *Header, ESaveDataLoadResult LoadingResult ) -> bool
-	{
-		const auto GameHeader = CastChecked< UUpliftCampaignSaveHeader >( Header );
-		return Filter.Execute( SlotName, UserIndex, GameHeader, LoadingResult );
-	};
-
-	Super::FindMostRecentSave_Async( WorldContext, UserIndex, UUpliftCampaignSaveHeader::StaticClass( ), OnCompletion_Core, FSaveFilter_Core::CreateLambda( FilterLambda ) );
-}
-
-FEnumeratedSaveGameHeader UUpliftCampaignSaveUtilities::FindLeastRecentSave( const UObject *WorldContext, int32 UserIndex, const FSaveFilter &Filter )
-{
-	FEnumeratedHeader_Core CoreResult;
-	if (Filter.IsBound( ))
-	{
-		auto FilterLambda = [ Filter ]( const FString &SlotName, int32 UserIndex, const USaveDataHeader *Header, ESaveDataLoadResult LoadingResult ) -> bool
-		{
-			const auto GameHeader = CastChecked< UUpliftCampaignSaveHeader >( Header );
-			return Filter.Execute( SlotName, UserIndex, GameHeader, LoadingResult );
-		};
-
-		CoreResult = Super::FindLeastRecentSave( WorldContext, UserIndex, UUpliftCampaignSaveHeader::StaticClass( ), FSaveFilter_Core::CreateLambda( FilterLambda ) );
-	}
-	else
-	{
-		CoreResult = Super::FindLeastRecentSave( WorldContext, UserIndex, UUpliftCampaignSaveHeader::StaticClass( ) );
-	}
-
-	return FEnumeratedSaveGameHeader( CoreResult );
-}
-
-void UUpliftCampaignSaveUtilities::FindLeastRecentSave_Async( const UObject *WorldContext, int32 UserIndex, const FLoadHeaderAsyncCallback &OnCompletion, const FSaveFilter &Filter )
-{
-	check( OnCompletion.IsBound( ) );
-
-	auto CompletionLambda = [ OnCompletion ]( const FString &SlotName, int32 UserIndex, ESaveDataLoadResult Result, const USaveDataHeader *Header ) -> void
-	{
-		OnCompletion.Execute( SlotName, UserIndex, Result, CastChecked< UUpliftCampaignSaveHeader >( Header, ECastCheckedType::NullAllowed ) );
-	};
-	const auto OnCompletion_Core = Super::FLoadHeaderAsyncCallback_Core::CreateLambda( CompletionLambda );
-
-	if (!Filter.IsBound( ))
-		return Super::FindLeastRecentSave_Async( WorldContext, UserIndex, UUpliftCampaignSaveHeader::StaticClass( ), OnCompletion_Core );
-
-	auto FilterLambda = [ Filter ]( const FString &SlotName, int32 UserIndex, const USaveDataHeader *Header, ESaveDataLoadResult LoadingResult ) -> bool
-	{
-		const auto GameHeader = CastChecked< UUpliftCampaignSaveHeader >( Header );
-		return Filter.Execute( SlotName, UserIndex, GameHeader, LoadingResult );
-	};
-
-	Super::FindLeastRecentSave_Async( WorldContext, UserIndex, UUpliftCampaignSaveHeader::StaticClass( ), OnCompletion_Core, FSaveFilter_Core::CreateLambda( FilterLambda ) );
-}
-
 const UUpliftCampaignSave* UUpliftCampaignSaveUtilities::CreateTravelSave( const UObject *WorldContext, const TSoftObjectPtr< const UWorld > &Destination )
 {
-	const auto Save = CreateAndFillSaveData( WorldContext, false, true );
+	const auto Save = CreateAndFillSaveData( WorldContext, { }, false, ESaveGameType::Travel );
 
 	Save->WorldToLoad = Destination;
 
@@ -697,7 +605,7 @@ const UUpliftCampaignSave* UUpliftCampaignSaveUtilities::CreateCheckpointSave( c
 		return nullptr;
 	}
 	
-	return CreateAndFillSaveData( WorldContext, false, false );
+	return CreateAndFillSaveData( WorldContext, { }, false, ESaveGameType::Checkpoint );
 }
 
 void UUpliftCampaignSaveUtilities::CreateCheckpointSave_Async( const UObject *WorldContext, const FCreateCheckpointComplete &OnCompletion )
@@ -716,85 +624,22 @@ void UUpliftCampaignSaveUtilities::CreateCheckpointSave_Async( const UObject *Wo
 		return;
 	}
 
-	const auto CheckpointData = CreateSaveData( WorldContext, false );
+	const auto CheckpointData = CreateSaveData( WorldContext, { }, ESaveGameType::Checkpoint );
 
 	FillAsyncSaveGameData_Async( WorldContext, CheckpointData, false, OnCompletion );
 }
 
-FString UUpliftCampaignSaveUtilities::FindBestAutoSaveSlotName( const UObject *WorldContext, int32 UserIndex )
-{
-	const auto AvailableSlot = Super::GetUnusedSlotName( UserIndex, AutoSavePrefix, CVar_MaxAutoSaveSlots.GetValueOnAnyThread( ) );
-
-	if (!AvailableSlot.IsEmpty( ))
-		return AvailableSlot;
-
-	const auto AutoSaveFilter = FSaveFilter::CreateLambda( [ ]( const FString &SlotName, int32 UserIndex, const UUpliftCampaignSaveHeader *Header, ESaveDataLoadResult LoadingResult ) -> bool
-	{
-		return Header->SaveType == ESaveGameType::Auto;
-	});
-	
-	const auto Oldest = FindLeastRecentSave( WorldContext, UserIndex, AutoSaveFilter );
-	return Oldest.SlotName;
-}
-
-void UUpliftCampaignSaveUtilities::FindBestAutoSaveSlotName_Async( const UObject *WorldContext, int32 UserIndex, const FSaveAsyncCallback &OnCompletion )
-{
-	check( OnCompletion.IsBound( ) );
-
-	TWeakObjectPtr< const UObject > WorldPtr( WorldContext );
-	const auto FindComplete = FSaveAsyncCallback_Core::CreateLambda( [ WorldPtr, OnCompletion ]( const FString &SlotName, int32 UserIndex, bool Success )
-	{
-		if (Success)
-		{
-			OnCompletion.Execute( SlotName, UserIndex, true );
-			return;
-		}
-
-		if (!ensureAlways( WorldPtr.IsValid( ) ))
-		{
-			OnCompletion.Execute( FString( ), UserIndex, false );
-			return;
-		}
-
-		const auto AutoSaveFilter = FSaveFilter::CreateLambda( [ ]( const FString &SlotName, int32 UserIndex, const UUpliftCampaignSaveHeader *Header, ESaveDataLoadResult LoadingResult ) -> bool
-		{
-			if (Header->SaveType != ESaveGameType::Auto)
-				return false; // ignore non-auto saves
-
-			if (!SlotName.StartsWith( AutoSavePrefix ))
-				return false; // ignore saves created with non-standard names
-
-			if (!SlotName.LeftChop( AutoSavePrefix.Len( ) ).IsNumeric( ))
-				return false; // ignore saves that don't have a numeric suffix
-
-			return true;
-		});
-	
-		const auto FoundOldest = FLoadHeaderAsyncCallback::CreateLambda( [ OnCompletion ]( const FString &SlotName, int32 UserIndex, ESaveDataLoadResult Result, const UUpliftCampaignSaveHeader *Header )
-		{
-			if (Header == nullptr)
-				OnCompletion.Execute( FString( ), UserIndex, false );
-			else
-				OnCompletion.Execute( SlotName, UserIndex, true );
-		});
-
-		FindLeastRecentSave_Async( WorldPtr.Get( ), UserIndex, FoundOldest, AutoSaveFilter );
-	});
-
-	Super::GetUnusedSlotName_Async( WorldContext, UserIndex, FindComplete, AutoSavePrefix, CVar_MaxAutoSaveSlots.GetValueOnAnyThread( ) );
-}
-
-bool UUpliftCampaignSaveUtilities::AutoSave( const UObject *WorldContext, int32 UserIndex, const FString &DisplayNameOverride )
+bool UUpliftCampaignSaveUtilities::AutoSave( const UObject *WorldContext, FString SlotName, int32 UserIndex, const FText &DisplayName )
 {
 	if (!ensureAlways( !AnyAsyncSaveTasksPending( WorldContext )))
 		return false;
 	
-	const auto SlotName = FindBestAutoSaveSlotName( WorldContext, UserIndex );
+	UpdateSlotName( WorldContext, SlotName, ESaveGameType::Auto, ADS_Campaign::GetCampaignID( WorldContext ) );
 
-	return SaveToSlot( WorldContext, SlotName, UserIndex, ESaveGameType::Auto, DisplayNameOverride );
+	return SaveToSlot( WorldContext, SlotName, UserIndex, ESaveGameType::Auto, DisplayName );
 }
 
-void UUpliftCampaignSaveUtilities::AutoSave_Async( const UObject *WorldContext, int32 UserIndex, const FString &DisplayNameOverride, const FSaveAsyncCallback &OnCompletion )
+void UUpliftCampaignSaveUtilities::AutoSave_Async( const UObject *WorldContext, FString SlotName, int32 UserIndex, const FText &DisplayName, const FSaveAsyncCallback &OnCompletion )
 {
 	if (!ensureAlways( SaveOperationsAreAllowed( ) ))
 	{
@@ -808,58 +653,32 @@ void UUpliftCampaignSaveUtilities::AutoSave_Async( const UObject *WorldContext, 
 		return;
 	}
 
+	UpdateSlotName( WorldContext, SlotName, ESaveGameType::Auto, ADS_Campaign::GetCampaignID( WorldContext ) );
+
 	struct FAutoSaveTask : public FSaveDataTask
 	{
-		FAutoSaveTask( int UI, const FString &DN ) : FSaveDataTask( UI ), DisplayName( DN ) { }
+		FAutoSaveTask( int UI, const FString &SN, const FText &DN ) : FSaveDataTask( UI ), DisplayName( DN ), SlotName( SN ) { }
 
 		// Begin the multiple async task required for creating an async auto save - creating the save and determining the name
 		void Branch(const UObject *WorldContext) override
 		{
 			Context = WorldContext;
-			
-			const auto FillComplete = FCreateCheckpointComplete::CreateLambda( [ this ]( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, bool Success )
-			{
-				if (Success)
-				{
-					SaveData = TStrongObjectPtr( CheckpointData );
-				}
-				else
-				{
-					bResult = false;
-				}
 
-				++CompletionCount;
-			});
-			FillAsyncSaveGameData_Async( WorldContext, CreateSaveData( WorldContext ), true, FillComplete );
-
-			const auto FindSlotName = FSaveAsyncCallback::CreateLambda( [ this ](const FString &FoundSlotName, int32 /*UserIndex*/, bool Success)
-			{
-				if (Success)
-					SlotName = FoundSlotName;
-				else
-					bResult = false;
-
-				++CompletionCount;
-			});
-			FindBestAutoSaveSlotName_Async( WorldContext, UserIndex, FindSlotName );
+			SaveData = TStrongObjectPtr( CreateSaveData( WorldContext, DisplayName, ESaveGameType::Auto ) );
 		}
 
 		void DoWork( void )
 		{
 			TRACE_CPUPROFILER_EVENT_SCOPE( TEXT( "FAutoSaveTask::DoWork" ) )
 
-			while (CompletionCount < 2) // wait until both async tasks are completed
-				FPlatformProcess::Sleep( 0.1f );
+			bResult = FillAsyncSaveGameData( SaveData.Get( ) );
 
 			if (!bResult)
 				return; // something went wrong so quit
 
-			if (DisplayName.IsEmpty( ))
-				DisplayName = SlotName.Replace( TEXT( "_" ), TEXT( " " ) );
-
 			FGCScopeGuard GCGuard;
 
-			Header = CreateSaveGameHeader( SaveData.Get( ), ESaveGameType::Auto, DisplayName );
+			Header = CreateSaveGameHeader( SaveData.Get( ), SlotName, ESaveGameType::Auto, SlotName );
 			if (Header == nullptr)
 			{
 				bResult = false;
@@ -876,13 +695,13 @@ void UUpliftCampaignSaveUtilities::AutoSave_Async( const UObject *WorldContext, 
 		}
 
 		// The save game data to be saved into the auto save slot
-		TStrongObjectPtr< const UUpliftCampaignSave > SaveData;
+		TStrongObjectPtr< UUpliftCampaignSave > SaveData;
 
 		// The header metadata about the save
 		UUpliftCampaignSaveHeader *Header = nullptr;
 		
 		// The user facing name that should be used for this save
-		FString DisplayName;
+		FText DisplayName;
 		
 		// The slot that the save data should be written to
 		FString SlotName;
@@ -893,16 +712,14 @@ void UUpliftCampaignSaveUtilities::AutoSave_Async( const UObject *WorldContext, 
 		// The context in which the operation is running
 		const UObject *Context = nullptr;
 
-		// Counter to track the completion of subordinate async tasks
-		// The completion delegates are run on the game thread, so there's no potential concurrency issue
-		// This async task only reads, and it doesn't really matter if the read misses with either increment
-		int CompletionCount = 0;
-		
-	} NewTask( UserIndex, DisplayNameOverride );
+	} NewTask( UserIndex, SlotName, DisplayName );
 
 	const auto AsyncComplete = FAsyncTaskComplete< FAutoSaveTask >::CreateLambda( [ OnCompletion ]( const UObject *WorldContext, const FAutoSaveTask &Task )
 	{
 		OnCompletion.ExecuteIfBound( Task.SlotName, Task.UserIndex, Task.bResult );
+		
+		if (Task.bResult)
+			OnSaveGameCreated.Broadcast( Task.UserIndex, Task.SlotName, Task.Header );
 	});
 
 	if (!StartAsyncSaveTask( WorldContext, MoveTemp( NewTask ), "Auto Save", AsyncComplete ))
@@ -914,12 +731,15 @@ bool UUpliftCampaignSaveUtilities::QuickSave( const UObject *WorldContext, int32
 	if (!IsManualSavingAllowed( WorldContext ))
 		return false;
 	
-	return SaveToSlot( WorldContext, GetQuickSaveSlotName( ), UserIndex, ESaveGameType::Quick, GetQuickSaveDisplayName( ) );
+	const auto CampaignID = ADS_Campaign::GetCampaignID( WorldContext );
+
+	return SaveToSlot( WorldContext, GetQuickSaveSlotName( CampaignID ), UserIndex, ESaveGameType::Quick );
 }
 
 void UUpliftCampaignSaveUtilities::QuickSave_Async( const UObject *WorldContext, int32 UserIndex, const FSaveAsyncCallback &OnCompletion )
 {
-	const auto SlotName = GetQuickSaveSlotName( );
+	const auto CampaignID = ADS_Campaign::GetCampaignID( WorldContext );
+	const auto SlotName = GetQuickSaveSlotName( CampaignID );
 	
 	if (!IsManualSavingAllowed( WorldContext ))
 	{
@@ -927,10 +747,10 @@ void UUpliftCampaignSaveUtilities::QuickSave_Async( const UObject *WorldContext,
 		return;
 	}
 	
-	SaveToSlot_Async( WorldContext, SlotName, UserIndex, ESaveGameType::Quick, GetQuickSaveDisplayName( ), OnCompletion );
+	SaveToSlot_Async( WorldContext, SlotName, UserIndex, ESaveGameType::Quick, { }, OnCompletion );
 }
 
-bool UUpliftCampaignSaveUtilities::SaveToPath( const UObject *WorldContext, const FString &PathName, ESaveGameType SaveType, FString DisplayNameOverride )
+bool UUpliftCampaignSaveUtilities::SaveToPath( const UObject *WorldContext, const FString &PathName, ESaveGameType SaveType, const FText &DisplayName )
 {
 	check( IsInGameThread( ) );
 
@@ -948,28 +768,23 @@ bool UUpliftCampaignSaveUtilities::SaveToPath( const UObject *WorldContext, cons
 		return false;
 	}
 
-	const auto SaveData = CreateAndFillSaveData( WorldContext, true, false );
+	const auto SaveData = CreateAndFillSaveData( WorldContext, DisplayName, true, SaveType );
 	if (!ensureAlways( SaveData != nullptr ))
 		return false;
 
-	if (DisplayNameOverride.IsEmpty( ))
-	{
-		int Index = INDEX_NONE;
-		PathName.FindLastChar( '/', Index );
+	int Index = INDEX_NONE;
+	PathName.FindLastChar( '/', Index );
 
-		DisplayNameOverride = PathName.Right( PathName.Len( ) - Index - 1 );
+	const auto SlotName = PathName.Right( PathName.Len( ) - Index - 1 );
 
-		DisplayNameOverride = DisplayNameOverride.Replace( TEXT( "_" ), TEXT( " " ) );
-	}
-
-	const auto Header = CreateSaveGameHeader( SaveData, SaveType, DisplayNameOverride );
+	const auto Header = CreateSaveGameHeader( SaveData, SlotName, SaveType, SlotName );
 	if (!ensureAlways( Header != nullptr ))
 		return false;
 
 	return Super::SaveDataToPath( WorldContext, Header, SaveData, PathName );
 }
 
-void UUpliftCampaignSaveUtilities::SaveToPath_Async( const UObject *WorldContext, const FString &PathName, ESaveGameType SaveType, FString DisplayNameOverride, const FSaveAsyncCallback &OnCompletion )
+void UUpliftCampaignSaveUtilities::SaveToPath_Async( const UObject *WorldContext, const FString &PathName, ESaveGameType SaveType, const FText &DisplayName, const FSaveAsyncCallback &OnCompletion )
 {
 	if (!CVar_AllowDeveloperSaves.GetValueOnAnyThread( ) && (SaveType == ESaveGameType::Developer))
 	{
@@ -989,24 +804,19 @@ void UUpliftCampaignSaveUtilities::SaveToPath_Async( const UObject *WorldContext
 		return;
 	}
 
-	const auto SaveData = CreateSaveData( WorldContext );
+	const auto SaveData = CreateSaveData( WorldContext, DisplayName, SaveType );
 	if (!ensureAlways( SaveData != nullptr ))
 	{
 		OnCompletion.ExecuteIfBound( PathName, -1, false );
 		return;
 	}
 
-	if (DisplayNameOverride.IsEmpty( ))
-	{
-		int Index = INDEX_NONE;
-		PathName.FindLastChar( '/', Index );
+	int Index = INDEX_NONE;
+	PathName.FindLastChar( '/', Index );
 
-		DisplayNameOverride = PathName.Right( PathName.Len( ) - Index - 1 );
+	const auto SlotName = PathName.Right( PathName.Len( ) - Index - 1 );
 
-		DisplayNameOverride = DisplayNameOverride.Replace( TEXT( "_" ), TEXT( " " ) );
-	}
-
-	const auto AsyncFillComplete = FCreateCheckpointComplete::CreateLambda( [ PathName, SaveType, DisplayNameOverride, OnCompletion ]( const UObject *WorldContext, const UUpliftCampaignSave* CheckpointData, bool Success )
+	const auto AsyncFillComplete = FCreateCheckpointComplete::CreateLambda( [ PathName, SaveType, SlotName, OnCompletion ]( const UObject *WorldContext, const UUpliftCampaignSave* CheckpointData, bool Success )
 	{
 		if (!Success)
 		{
@@ -1014,7 +824,7 @@ void UUpliftCampaignSaveUtilities::SaveToPath_Async( const UObject *WorldContext
 			return;
 		}
 
-		const UUpliftCampaignSaveHeader* Header = CreateSaveGameHeader( CheckpointData, SaveType, DisplayNameOverride );
+		const UUpliftCampaignSaveHeader* Header = CreateSaveGameHeader( CheckpointData, SlotName, SaveType, SlotName );
 		if (!ensureAlways( Header != nullptr ))
 		{
 			OnCompletion.ExecuteIfBound( PathName, -1, false );
@@ -1027,7 +837,7 @@ void UUpliftCampaignSaveUtilities::SaveToPath_Async( const UObject *WorldContext
 	FillAsyncSaveGameData_Async( WorldContext, SaveData, true, AsyncFillComplete );
 }
 
-void UUpliftCampaignSaveUtilities::SaveCheckpointToPath( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, const FString &PathName, ESaveGameType SaveType, FString DisplayNameOverride )
+void UUpliftCampaignSaveUtilities::SaveCheckpointToPath( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, const FString &PathName, ESaveGameType SaveType )
 {
 	check( IsInGameThread( ) );
 
@@ -1039,23 +849,19 @@ void UUpliftCampaignSaveUtilities::SaveCheckpointToPath( const UObject *WorldCon
 	if (!ensureAlways( CheckpointData->bCreationComplete == true ))
 		return;
 
-	if (DisplayNameOverride.IsEmpty( ))
-	{
-		int Index = INDEX_NONE;
-		PathName.FindLastChar( '/', Index );
+	int Index = INDEX_NONE;
+	PathName.FindLastChar( '/', Index );
 
-		DisplayNameOverride = PathName.Right( PathName.Len( ) - Index - 1 );
-
-		DisplayNameOverride = DisplayNameOverride.Replace( TEXT( "_" ), TEXT( " " ) );
-	}
+	const auto SlotName = PathName.Right( PathName.Len( ) - Index - 1 );
 
 	const auto SaveGameData = CastChecked< UUpliftCampaignSave >( StaticDuplicateObject( CheckpointData, GetTransientPackage( ) ) );
+	SaveGameData->SaveType = SaveType;
 
 	if (!ensureAlways( FillCheckpointData( WorldContext, SaveGameData ) ))
 		return;
 	SaveGameData->bCreationComplete = true;
 
-	const auto Header = CreateSaveGameHeader( SaveGameData, SaveType, DisplayNameOverride );
+	const auto Header = CreateSaveGameHeader( SaveGameData, SlotName, SaveType, SlotName );
 	if (!ensureAlways( Header != nullptr ))
 		return;
 
@@ -1063,7 +869,7 @@ void UUpliftCampaignSaveUtilities::SaveCheckpointToPath( const UObject *WorldCon
 	ensureAlways( SaveDataResult );
 }
 
-void UUpliftCampaignSaveUtilities::SaveCheckpointToPath_Async( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, const FString &PathName, ESaveGameType SaveType, FString DisplayNameOverride, const FSaveAsyncCallback &OnCompletion )
+void UUpliftCampaignSaveUtilities::SaveCheckpointToPath_Async( const UObject *WorldContext, const UUpliftCampaignSave *CheckpointData, const FString &PathName, ESaveGameType SaveType, const FSaveAsyncCallback &OnCompletion )
 {
 	if (!CVar_AllowDeveloperSaves.GetValueOnAnyThread( ) && (SaveType == ESaveGameType::Developer))
 	{
@@ -1095,19 +901,14 @@ void UUpliftCampaignSaveUtilities::SaveCheckpointToPath_Async( const UObject *Wo
 		return;
 	}
 
-	if (DisplayNameOverride.IsEmpty( ))
-	{
-		int Index = INDEX_NONE;
-		PathName.FindLastChar( '/', Index );
+	int Index = INDEX_NONE;
+	PathName.FindLastChar( '/', Index );
 
-		DisplayNameOverride = PathName.Right( PathName.Len( ) - Index - 1 );
-
-		DisplayNameOverride = DisplayNameOverride.Replace( TEXT( "_" ), TEXT( " " ) );
-	}
+	const auto SlotName = PathName.Right( PathName.Len( ) - Index - 1 );
 
 	struct FSaveCheckpointTask : public FSaveDataTask
 	{
-		FSaveCheckpointTask( const FString &PN, ESaveGameType ST, const FString &DN, const UUpliftCampaignSave *CP ) : FSaveDataTask( -1 ), PathName( PN ), DisplayName( DN ), SaveType( ST ), CheckpointData( CP ) { }
+		FSaveCheckpointTask( const FString &PN, ESaveGameType ST, const FString &SN, const UUpliftCampaignSave *CP ) : FSaveDataTask( -1 ), PathName( PN ), SlotName( SN ), SaveType( ST ), CheckpointData( CP ) { }
 
 		void Branch(const UObject *WorldContext) override
 		{
@@ -1119,12 +920,13 @@ void UUpliftCampaignSaveUtilities::SaveCheckpointToPath_Async( const UObject *Wo
 			SaveGameData = CastChecked< UUpliftCampaignSave >( StaticDuplicateObject( CheckpointData.Get( ), GetTransientPackage( ) ) );
 			if (SaveGameData == nullptr)
 				return;
+			SaveGameData->SaveType = SaveType;
 
 			if (!FillCheckpointData( Context, SaveGameData ))
 				return;
 			SaveGameData->bCreationComplete = true;
 
-			Header = CreateSaveGameHeader( SaveGameData, SaveType, DisplayName );
+			Header = CreateSaveGameHeader( SaveGameData, SlotName, SaveType, SlotName );
 			if (Header == nullptr)
 				return;
 
@@ -1143,7 +945,7 @@ void UUpliftCampaignSaveUtilities::SaveCheckpointToPath_Async( const UObject *Wo
 		FString PathName;
 
 		// The display name to assign to the save header
-		FString DisplayName;
+		FString SlotName;
 
 		// The type of save to write
 		ESaveGameType SaveType;
@@ -1163,7 +965,7 @@ void UUpliftCampaignSaveUtilities::SaveCheckpointToPath_Async( const UObject *Wo
 		// The overall result of the write operation
 		bool bResult = false;
 
-	} NewTask( PathName, SaveType, DisplayNameOverride, CheckpointData );
+	} NewTask( PathName, SaveType, SlotName, CheckpointData );
 
 	const auto AsyncTaskComplete = FAsyncTaskComplete< FSaveCheckpointTask >::CreateLambda( [ OnCompletion ]( const UObject *WorldContext, const FSaveCheckpointTask &Task )
 	{
@@ -1252,7 +1054,7 @@ void UUpliftCampaignSaveUtilities::LoadPathHeaderOnly_Async( const UObject *Worl
 }
 
 #if !UE_BUILD_SHIPPING && !UE_BUILD_TEST
-bool UUpliftCampaignSaveUtilities::DeveloperSave( const UObject *WorldContext, const FString &SlotName, int32 UserIndex, FString DisplayNameOverride )
+bool UUpliftCampaignSaveUtilities::DeveloperSave( const UObject *WorldContext, const FString &SlotName, int32 UserIndex, const FText &DisplayName )
 {
 	if (!ensureAlways( !SlotName.IsEmpty( ) ))
 		return false;
@@ -1268,13 +1070,10 @@ bool UUpliftCampaignSaveUtilities::DeveloperSave( const UObject *WorldContext, c
 		return false;
 	}
 
-	if (DisplayNameOverride.IsEmpty( ))
-		DisplayNameOverride = SlotName.Replace( TEXT( "_" ), TEXT( " " ) );
-	
-	return SaveToSlot( WorldContext, DevSavePrefix + SlotName, UserIndex, ESaveGameType::Developer, DisplayNameOverride );
+	return SaveToSlot( WorldContext, DevSavePrefix + SlotName, UserIndex, ESaveGameType::Developer, DisplayName );
 }
 
-void UUpliftCampaignSaveUtilities::DeveloperSave_Async( const UObject *WorldContext, const FString &SlotName, int32 UserIndex, FString DisplayNameOverride, const FSaveAsyncCallback &OnCompletion )
+void UUpliftCampaignSaveUtilities::DeveloperSave_Async( const UObject *WorldContext, const FString &SlotName, int32 UserIndex, const FText &DisplayName, const FSaveAsyncCallback &OnCompletion )
 {
 	if (!ensureAlways( !SlotName.IsEmpty( ) ))
 	{
@@ -1293,10 +1092,7 @@ void UUpliftCampaignSaveUtilities::DeveloperSave_Async( const UObject *WorldCont
 		OnCompletion.ExecuteIfBound( SlotName, UserIndex, false );
 		return;
 	}
-	
-	if (DisplayNameOverride.IsEmpty( ))
-		DisplayNameOverride = SlotName.Replace( TEXT( "_" ), TEXT( " " ) );
 
-	SaveToSlot_Async( WorldContext, DevSavePrefix + SlotName, UserIndex, ESaveGameType::Developer, DisplayNameOverride, OnCompletion );
+	SaveToSlot_Async( WorldContext, DevSavePrefix + SlotName, UserIndex, ESaveGameType::Developer, DisplayName, OnCompletion );
 }
 #endif

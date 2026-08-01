@@ -28,3 +28,21 @@ Detailed descriptions of (some) things available in the ReadMe.
 * Added a GUID to the campaign for uniquely identifying it against other campaigns (useful for save management and telemetry)
 * Improvements to the World Type based World Subsystems
 * Update to 5.8.0 Engine version (and corresponding changes to Starfire Plugins)
+
+## August 2026
+* First pass UI Implementation for Load Game, Save Game & Continue buttons in Shell & Pause Menu
+	* New screens for Load Game & Save Game
+	* New supporting widgets for save game entries and lists
+	* New dialog box for prompting for user input to name manual saves
+	* New View Models tracking the set of all save games and views of individual saves
+* Updates to the save slot naming conventions
+	* Add the slot name directly to the header because platforms don't always use the slot name 1:1 as the filename
+* Updates & centralization of the display naming functionality
+	* Most save requests can now skip providing one and a reasonable one is generated (more work here as more gameplay is implemented)
+	* Track user entry of the display name so that overwriting saves can preserve user names, but regenerates automated names
+	* Also first pass at the extra display info included for entries
+* Add Travel & Checkpoints as actual save game types (even though they're never written to disk that way)
+	* Save Type is updated on checkpoints if they're ever saved to disk
+* Remove some Campaign Save utilities that aren't really needed after implementing the view models
+* Two! save game version bumps!
+* Add an autosave to Strategy
