@@ -285,7 +285,9 @@ Given the use of save games for the transitions, it is intended that user saves 
 The saves do support versioning which allows for old saves to be made unsupported, but within a single build Uplift should be able to load & play correctly saves created from the same build.
 
 Load Game Menu (as of August 2026)
+
 ![](./Resources/LoadGame.png)
 
-Save Game Menu (as of August 2026)
+Save Game Menu (as of August 2026) 
+
 ![](./Resources/SaveGame.png)
