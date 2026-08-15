@@ -229,7 +229,7 @@ void ACampaignGameMode::InitGameModelData( void )
 		SaveGames->SaveGame->ApplySaveData( this );
 
 		SaveGames->bSaveWasLoaded = true;
-		SaveGames->bSaveWasLevelTransition = SaveGames->SaveGame->bTravelSave;
+		SaveGames->bSaveWasLevelTransition = (SaveGames->SaveGame->SaveType == ESaveGameType::Travel);
 
 		SaveGames->SaveGame = nullptr;
 
