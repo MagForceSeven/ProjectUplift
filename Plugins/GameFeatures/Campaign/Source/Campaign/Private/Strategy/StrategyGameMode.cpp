@@ -4,6 +4,7 @@
 
 #include "Strategy/StrategyGameState.h"
 #include "Strategy/StrategyPlayerController.h"
+#include "Strategy/StrategyPawn.h"
 #include "Strategy/StrategyPlayerState.h"
 #include "Strategy/StrategyHUD.h"
 #include "Strategy/StrategyModeScopeCollection.h"
@@ -40,6 +41,7 @@ AStrategyGameMode::AStrategyGameMode( )
 	PlayerControllerClass = AStrategyPlayerController::StaticClass( );
 	PlayerStateClass = AStrategyPlayerState::StaticClass( );
 	HUDClass = AStrategyHUD::StaticClass( );
+	DefaultPawnClass = AStrategyPawn::StaticClass( );
 
 	GameModeBundles.Push( CampaignBundles::Strategy );
 
