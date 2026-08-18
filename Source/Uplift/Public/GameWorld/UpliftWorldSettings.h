@@ -14,4 +14,8 @@ class UPLIFT_API AUpliftWorldSettings : public AStarfireWorldSettings
 public:
 	UE_DECLARE_GAMEPLAY_TAG_SCOPED( WorldType_Shell )
 	UE_DECLARE_GAMEPLAY_TAG_SCOPED( WorldType_DevShell )
+
+	// Static accessors to the Uplift specific world settings type
+	[[nodiscard]] static const AUpliftWorldSettings* GetWorldSettings( const UObject *WorldContext );
+	[[nodiscard]] static const AUpliftWorldSettings* GetWorldSettings( const UWorld *World );
 };
